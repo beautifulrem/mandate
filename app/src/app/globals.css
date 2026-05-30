@@ -111,6 +111,13 @@ a:focus-visible {
   70% { transform: scale(1.15); }
   100% { transform: scale(1); opacity: 1; }
 }
+@keyframes severFlash {
+  0% { box-shadow: 0 0 0 1px var(--color-state-danger), 0 0 26px 5px rgba(248, 113, 113, 0.65); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes beamFlow {
+  to { stroke-dashoffset: -22; }
+}
 
 /* ---------- top bar / hero ---------- */
 .topbar {
@@ -315,9 +322,14 @@ button.big {
 .chain {
   display: flex;
   align-items: stretch;
-  gap: 0;
+  gap: 56px;
+  position: relative;
 }
 .chain.killed { animation: shake 0.5s; }
+.chain.killed .cnode { animation: severFlash 0.6s ease-out both; }
+@media (max-width: 560px) {
+  .chain { gap: 28px; }
+}
 .cnode {
   flex: 1;
   background: var(--color-bg-card-elevated);
@@ -326,6 +338,7 @@ button.big {
   padding: 16px 12px 14px;
   text-align: center;
   position: relative;
+  z-index: 1;
   transition: border-color 0.3s, box-shadow 0.3s, opacity 0.4s, filter 0.4s;
 }
 .cnode .avatar {
@@ -368,36 +381,78 @@ button.big {
   animation: scan 1.2s ease-in-out infinite;
 }
 
-/* connector between nodes — flows when authority is live */
-.link {
-  align-self: center;
-  width: 46px;
-  height: 3px;
-  border-radius: 3px;
-  background: var(--color-border);
-  position: relative;
-  flex: none;
-  transition: background 0.3s;
-}
-.link.live {
-  background-image: linear-gradient(90deg, var(--color-brand-primary) 40%, transparent 40%);
-  background-size: 14px 3px;
-  background-repeat: repeat-x;
-  animation: flow 0.7s linear infinite;
-}
-.link.killed {
-  background: var(--color-state-danger);
-  opacity: 0.5;
-}
-.link.killed::after {
-  content: '✂';
+/* energy beams drawn between the nodes (SVG overlay) */
+.beam-svg {
   position: absolute;
-  top: -11px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 15px;
-  color: var(--color-state-danger);
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.beam-base {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke 0.3s;
+}
+.beam-base.killed {
+  stroke: var(--color-state-danger);
+  stroke-dasharray: 5 7;
+  opacity: 0.7;
+}
+.beam-pulse {
+  fill: none;
+  stroke-width: 2.75;
+  stroke-linecap: round;
+  stroke-dasharray: 9 13;
+  animation: beamFlow 0.55s linear infinite;
+}
+.beam-cut {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  font-size: 18px;
+  filter: drop-shadow(0 2px 6px rgba(248, 113, 113, 0.55));
   animation: pop 0.4s both;
+  pointer-events: none;
+}
+
+/* agent-authority meter — full orange while live, snaps to red 0 on sever */
+.authority {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.authority .ameter {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-card-elevated);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.authority .afill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--color-brand-accent), var(--color-brand-primary));
+  box-shadow: 0 0 12px var(--color-brand-glow);
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s, box-shadow 0.4s;
+}
+.authority .aval {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-brand-primary);
+  min-width: 40px;
+  text-align: right;
+}
+.authority.killed .afill {
+  background: var(--color-state-danger);
+  box-shadow: none;
+}
+.authority.killed .aval {
+  color: var(--color-state-danger);
 }
 
 /* the cast vote burst */
@@ -461,3 +516,13 @@ button.big {
 .mt-lg { margin-top: var(--space-lg); }
 .mb-0 { margin-bottom: 0; }
 .gap-sm { gap: var(--space-sm); }
+
+/* respect reduced-motion: keep state legible, drop the looping/oscillating motion */
+@media (prefers-reduced-motion: reduce) {
+  .beam-pulse { animation: none; opacity: 0.9; }
+  .cnode.working { animation: none; }
+  .cnode.working .avatar { transform: none; }
+  .tee .sweep { animation: none; }
+  .chain.killed, .chain.killed .cnode { animation: none; }
+  .step.current .dot { animation: none; }
+}

@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Delegation, RunStatus } from '@mandate/shared';
+import { AnimatedBeam } from '../components/AnimatedBeam';
+import { NumberTicker } from '../components/NumberTicker';
 import { BASESCAN, DEMO_PROPOSAL, shortHex } from '../lib/config';
 import { getConfig, getRun, postGrant, type DemoConfig } from '../lib/orchestrator';
 import { recall } from '../lib/recall';
+import { fireSever } from '../lib/sever';
 import { connect, signGrant, type Connection } from '../lib/wallet';
 
 const ORDER = ['granted', 'redelegated', 'analyzing', 'decided', 'voting', 'voted'];
@@ -34,6 +37,10 @@ export default function Home() {
   const [recallTx, setRecallTx] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chainRef = useRef<HTMLDivElement>(null);
+  const youRef = useRef<HTMLDivElement>(null);
+  const orchRef = useRef<HTMLDivElement>(null);
+  const analystRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getConfig().then(setCfg).catch((e) => setError(String(e.message ?? e)));
@@ -59,6 +66,11 @@ export default function Home() {
       if (timer.current) clearInterval(timer.current);
     };
   }, [runId]);
+
+  // The wow-moment: fire the fracture burst the instant the chain is severed.
+  useEffect(() => {
+    if (recallTx) void fireSever(chainRef.current);
+  }, [recallTx]);
 
   async function onConnect() {
     setError(null);
@@ -184,13 +196,22 @@ export default function Home() {
       {/* the animated authority chain — centerpiece */}
       <div className="card">
         <div className="label mb-0">Live authority chain</div>
-        <div className={`chain ${killed ? 'killed' : ''} mt-md`}>
-          <ChainNode avatar="🧑" who="You" role="grant the permission" addr={youAddr} active={!!conn} killed={killed} />
-          <Link live={reached(s, 'redelegated')} killed={killed} />
-          <ChainNode avatar="🤖" who="Orchestrator" role="narrows the permission" addr={orchAddr} active={reached(s, 'redelegated')} working={s === 'granted'} killed={killed} />
-          <Link live={reached(s, 'analyzing')} killed={killed} />
-          <ChainNode avatar="🔎" who="Analyst" role="decides + casts the vote" addr={analystAddr} active={reached(s, 'analyzing')} working={s === 'redelegated' || s === 'analyzing'} tee={s === 'analyzing'} killed={killed} />
+        <div className={`chain ${killed ? 'killed' : ''} mt-md`} ref={chainRef}>
+          <ChainNode nodeRef={youRef} avatar="🧑" who="You" role="grant the permission" addr={youAddr} active={!!conn} killed={killed} />
+          <ChainNode nodeRef={orchRef} avatar="🤖" who="Orchestrator" role="narrows the permission" addr={orchAddr} active={reached(s, 'redelegated')} working={s === 'granted'} killed={killed} />
+          <ChainNode nodeRef={analystRef} avatar="🔎" who="Analyst" role="decides + casts the vote" addr={analystAddr} active={reached(s, 'analyzing')} working={s === 'redelegated' || s === 'analyzing'} tee={s === 'analyzing'} killed={killed} />
+          <AnimatedBeam containerRef={chainRef} fromRef={youRef} toRef={orchRef} live={reached(s, 'redelegated')} killed={killed} />
+          <AnimatedBeam containerRef={chainRef} fromRef={orchRef} toRef={analystRef} live={reached(s, 'analyzing')} killed={killed} />
         </div>
+
+        {/* agent-authority meter — full while the grant is live, snaps to 0 on sever */}
+        {run && (
+          <div className={`authority ${killed ? 'killed' : ''} mt-md`}>
+            <span className="label">Agent authority</span>
+            <div className="ameter"><div className="afill" style={{ width: killed ? '0%' : '100%' }} /></div>
+            <span className="aval"><NumberTicker value={killed ? 0 : 100} suffix="%" /></span>
+          </div>
+        )}
 
         {/* live result */}
         {venice && !killed && (
@@ -255,9 +276,9 @@ export default function Home() {
   );
 }
 
-function ChainNode({ avatar, who, role, addr, active, working, tee, killed }: { avatar: string; who: string; role: string; addr?: string; active?: boolean; working?: boolean; tee?: boolean; killed?: boolean }) {
+function ChainNode({ nodeRef, avatar, who, role, addr, active, working, tee, killed }: { nodeRef?: React.RefObject<HTMLDivElement | null>; avatar: string; who: string; role: string; addr?: string; active?: boolean; working?: boolean; tee?: boolean; killed?: boolean }) {
   return (
-    <div className={`cnode ${killed ? 'killed' : working ? 'working active' : active ? 'active' : ''}`}>
+    <div ref={nodeRef} className={`cnode ${killed ? 'killed' : working ? 'working active' : active ? 'active' : ''}`}>
       <span className="avatar">{avatar}</span>
       <div className="who">{who}</div>
       <div className="role">{role}</div>
@@ -265,10 +286,6 @@ function ChainNode({ avatar, who, role, addr, active, working, tee, killed }: { 
       {addr && <a className="mono label" style={{ display: 'inline-block', marginTop: 6 }} href={`${BASESCAN}/address/${addr}`} target="_blank" rel="noreferrer">{shortHex(addr, 4)}</a>}
     </div>
   );
-}
-
-function Link({ live, killed }: { live?: boolean; killed?: boolean }) {
-  return <div className={`link ${killed ? 'killed' : live ? 'live' : ''}`} />;
 }
 
 function StatusPill({ status }: { status: string }) {
