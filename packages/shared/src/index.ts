@@ -39,6 +39,31 @@ export {
   resolveModel,
   resolveTeeModel,
 } from './venice.js';
+export type {
+  CapabilitiesResult,
+  ChainCapabilities,
+  Ed25519Jwk,
+  Execution,
+  RelayerToken,
+  RelayTaskStatus,
+} from './oneshot.js';
+export {
+  buildSend7710Params,
+  estimate7710Transaction,
+  floorFee,
+  getCapabilities,
+  getFeeData,
+  getStatus,
+  is7702Upgraded,
+  isTerminalStatus,
+  ONESHOT_RELAYER_URL,
+  pickPaymentToken,
+  RelayStatus,
+  relayerCall,
+  relayStatusLabel,
+  send7710Transaction,
+  verifyWebhookSignature,
+} from './oneshot.js';
 export type { ProposalPhase, ProposalWindow } from './proposal.js';
 export {
   assertUsableWindow,
