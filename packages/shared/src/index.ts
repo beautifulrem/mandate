@@ -10,3 +10,36 @@ export {
 } from './accounts.js';
 export type { MandateAddresses } from './addresses.js';
 export { ADDRESSES } from './addresses.js';
+export type {
+  Decision,
+  Delegation,
+  DelegationChain,
+  GrantRequest,
+  GrantResponse,
+  RunError,
+  RunState,
+  RunStatus,
+  Support,
+  VeniceTrace,
+  VoteReceipt,
+} from './api.js';
+export {
+  AddressSchema,
+  Bytes32Schema,
+  CaveatSchema,
+  DecisionSchema,
+  DelegationChainSchema,
+  DelegationSchema,
+  GrantRequestSchema,
+  GrantResponseSchema,
+  HexSchema,
+  RunErrorSchema,
+  RunStatusEnum,
+  RunStatusSchema,
+  SUPPORT,
+  SupportSchema,
+  supportToDecision,
+  UintStringSchema,
+  VeniceTraceSchema,
+  VoteReceiptSchema,
+} from './api.js';

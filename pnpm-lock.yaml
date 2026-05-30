@@ -27,11 +27,23 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.19)
 
-  agent/analyst: {}
+  agent/analyst:
+    dependencies:
+      '@mandate/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
-  agent/orchestrator: {}
+  agent/orchestrator:
+    dependencies:
+      '@mandate/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
-  app: {}
+  app:
+    dependencies:
+      '@mandate/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
 
   packages/contracts: {}
 

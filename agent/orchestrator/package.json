@@ -6,5 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "echo \"No tests for @mandate/orchestrator yet\""
+  },
+  "dependencies": {
+    "@mandate/shared": "workspace:*"
   }
 }
