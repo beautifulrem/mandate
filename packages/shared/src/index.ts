@@ -66,6 +66,15 @@ export {
   send7710Transaction,
   verifyWebhookSignature,
 } from './oneshot.js';
+export type { PaymentRequired, PaymentRequirements } from './x402.js';
+export {
+  build402,
+  buildPaymentDelegation,
+  decodePayment,
+  encodePayment,
+  settlePaymentCalldata,
+  verifyPayment,
+} from './x402.js';
 export type { ProposalPhase, ProposalWindow } from './proposal.js';
 export {
   assertUsableWindow,

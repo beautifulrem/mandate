@@ -22,7 +22,7 @@ On-chain receipts proving each hackathon track. All testnet artifacts are on **B
 | 2 | **Best A2A coordination** (anchor) — 2-hop attenuated redelegation, redeemed on-chain | ✅ | vote + revoke txs below; 3 participants, 2 signed delegations, leaf→root redemption |
 | 3 | **Best 1Shot relayer** — mainnet castVote via 7702 upgrade + 7710 (USDC gas) | ✅ live (mainnet) | real Base-mainnet castVote relayed via 1Shot; burner 7702-upgraded; fee 0.01 USDC (see below) |
 | 4 | **Best Venice AI** — TEE model decides `support`; attestation verified | ✅ | live decisions discriminate (risky→Against, sound→For); `x-venice-tee:true`; attestation `verified:true` (see below) |
-| 5 | **x402 + ERC-7710** (secondary) — analyst pays per-query via scoped delegation | ⏳ T17 | — |
+| 5 | **x402 + ERC-7710** — a self-built seller charges per query; buyer pays via a scoped delegation | ✅ live | 402 → signed Erc20TransferAmount delegation → on-chain settle → data (`pnpm x402:demo`) |
 | 6 | **Best Agent** — autonomous analyze→decide→vote after one grant | ✅ | `pnpm orchestrate`: one grant → Venice TEE decision → real castVote; on-chain tally bucket == the decision (see below) |
 | 7 | **Kill-the-chain** (wow) — recall disables root; next redeem reverts | ✅ | disable UserOp + cause-proven revert below |
 | 8 | **Compliance** — open-source repo, addresses, video | ⏳ T20 | repo + this file |
@@ -67,6 +67,14 @@ VALUE / 0 TREASURY`); basescan: `https://basescan.org`.
   [`0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07`](https://basescan.org/tx/0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07).
   On-chain: `hasVoted(burner)=true`, `proposalVotes.For = 1000e18`, burner code = `0xef0100‖impl`.
   Reproduce: `pnpm 1shot:vote --estimate` (free quote) then `pnpm 1shot:vote`.
+
+## x402 + ERC-7710 — pay-per-query (live, Base Sepolia)
+
+- A **self-built data seller** (HTTP) returns **402 Payment Required** with an `erc7710` scheme. The
+  buyer (a smart account holding MVOTE credits) signs a **scoped `Erc20TransferAmount` delegation**
+  and retries with an `X-PAYMENT` header; the seller **redeems it on-chain to settle** (1 MVOTE
+  moves buyer→seller), then returns the data. Distinct from the Venice analyst (prepaid API key).
+  `pnpm x402:demo` → `402 → scoped delegation → on-chain settle → data`.
 
 ## Best Agent — autonomous loop (live)
 
