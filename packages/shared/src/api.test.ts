@@ -24,7 +24,7 @@ const grantFixture: GrantRequest = {
     delegator: USER,
     authority: ROOT_AUTHORITY,
     caveats: [{ enforcer: '0x5555555555555555555555555555555555555555', terms: '0xdeadbeef', args: '0x' }],
-    salt: '987654321',
+    salt: '0x3ade68b1',
     signature: '0x' + 'cd'.repeat(65),
   },
 };

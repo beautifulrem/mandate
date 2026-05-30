@@ -45,8 +45,8 @@ export const DelegationSchema = z.object({
   /** root authority is bytes32(0); a redelegation's authority is its parent's hash. */
   authority: Bytes32Schema,
   caveats: z.array(CaveatSchema),
-  /** 32-byte salt as a decimal bigint string. */
-  salt: UintStringSchema,
+  /** 32-byte salt as a hex string (matches the on-chain Delegation). */
+  salt: HexSchema,
   signature: HexSchema,
 });
 
@@ -145,5 +145,6 @@ export const RunStatusSchema = z.object({
 });
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
-export type Delegation = z.infer<typeof DelegationSchema>;
+/** The JSON wire shape of a delegation (hex fields); the on-chain `Delegation` lives in delegation.ts. */
+export type WireDelegation = z.infer<typeof DelegationSchema>;
 export type DelegationChain = z.infer<typeof DelegationChainSchema>;

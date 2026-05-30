@@ -10,6 +10,17 @@ export {
 } from './accounts.js';
 export type { MandateAddresses } from './addresses.js';
 export { ADDRESSES } from './addresses.js';
+export type { Caveat, Delegation, SmartAccountsEnvironment } from './delegation.js';
+export {
+  buildVoteDelegation,
+  canRedeem,
+  CASTVOTE_SIGNATURE,
+  delegationManagerAddress,
+  freshSalt,
+  redeemVoteCalldata,
+  redelegateVote,
+  revokeRootCalldata,
+} from './delegation.js';
 export type { ProposalPhase, ProposalWindow } from './proposal.js';
 export {
   assertUsableWindow,
@@ -22,7 +33,7 @@ export {
 } from './proposal.js';
 export type {
   Decision,
-  Delegation,
+  WireDelegation,
   DelegationChain,
   GrantRequest,
   GrantResponse,
