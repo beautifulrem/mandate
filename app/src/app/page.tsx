@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Delegation, RunStatus } from '@mandate/shared';
 import { AnimatedBeam } from '../components/AnimatedBeam';
 import { NumberTicker } from '../components/NumberTicker';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { BASESCAN, DEMO_PROPOSAL, shortHex } from '../lib/config';
 import { getConfig, getRun, postGrant, type DemoConfig } from '../lib/orchestrator';
 import { recall } from '../lib/recall';
@@ -151,7 +152,10 @@ export default function Home() {
     <div className="app-shell">
       <div className="topbar">
         <div className="brand"><span className="fox">🦊</span><span><span className="mark">Mandate</span></span></div>
-        <span className="chain-badge">Base Sepolia</span>
+        <div className="topbar-controls">
+          <ThemeToggle />
+          <span className="chain-badge">Base Sepolia</span>
+        </div>
       </div>
 
       <div className="hero">
