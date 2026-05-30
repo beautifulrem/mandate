@@ -1,58 +1,91 @@
 # Mandate — revocable AI governance delegation
 
-> Delegate your DAO voting power to an AI agent hierarchy — and yank it back in one click, on-chain.
+> Grant an AI agent a **scoped, revocable** right to vote your DAO governance on your behalf —
+> then kill the entire delegation chain on-chain in one click.
 >
-> Hackathon entry: **MetaMask Smart Accounts Kit × 1Shot API × Venice AI "Dev Cook-Off"** (submission 2026-06-15).
+> Hackathon entry: **MetaMask Smart Accounts Kit × 1Shot API × Venice AI "Dev Cook-Off"** (submit by 2026-06-15).
 
-## What it is
+## The flow
 
-Mandate lets a user grant a **scoped, revocable ERC-7710 delegation** to govern on their behalf:
+1. **Grant** — your MetaMask smart account signs an ERC-7710 `createDelegation` scoped to a single
+   call: `Governor.castVote(proposalId, support)` with **proposalId locked** and **support left free**.
+2. **Redelegate** — an **Orchestrator** smart account attenuated-redelegates that right to an
+   **Analyst** (2 signed delegations, 3 participants).
+3. **Decide** — the Analyst privately analyses the proposal inside a **Venice TEE** (Intel TDX) and
+   decides For / Against / Abstain — the cast `support` provably comes from the model, not hardcoded.
+4. **Vote** — the Analyst redeems the chain leaf→root; the DelegationManager executes `castVote`
+   **as your smart account**, so your seeded voting power is what counts.
+5. **Recall** — you hit **Recall** → one `disableDelegation` on the root makes every redemption of
+   the chain revert. *Self-custody you can watch.*
 
-1. The user delegates a tightly-scoped right (`castVote` on a specific Governor, one proposal) to an **Orchestrator** agent.
-2. The Orchestrator **attenuated-redelegates** an even narrower scope to **Analyst** agents.
-3. Analysts privately analyze the proposal inside a **Venice TEE** (confidential inference) and pay per-query for proposal data via **x402 + ERC-7710**.
-4. The vote is cast on **Base mainnet** through the **1Shot permissionless relayer** (gas paid in stablecoin, account upgraded via EIP-7702).
-5. At any moment the user hits **Recall** → one `disableDelegation` on the root makes the **entire delegation chain die on-chain**: the agent's next `castVote` redemption reverts. *Self-custody you can watch.*
+## Live on Base Sepolia (84532)
 
-## Targeted tracks
+| | address |
+|---|---|
+| VotesToken | [`0x56FC5fA996f9D0e15e40fE7D738C6cA055d1Ad55`](https://sepolia.basescan.org/address/0x56FC5fA996f9D0e15e40fE7D738C6cA055d1Ad55) |
+| MandateGovernor | [`0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5`](https://sepolia.basescan.org/address/0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5) |
 
-- **Best A2A coordination / redelegation** — primary (real 2-hop attenuated redelegation + cascade-revoke)
-- **Best 1Shot Permissionless Relayer** — mainnet 7710 relay + EIP-7702 upgrade through 1Shot
-- **Best x402 + ERC-7710** — agents pay per-query for proposal data via scoped delegation
-- **Best use of Venice AI** — private TEE proposal analysis decides the vote
-- **Best Agent** — autonomous analyze → decide → vote → revocable loop
+Per-track on-chain receipts are in **[`EVIDENCE.md`](./EVIDENCE.md)**.
 
-## Architecture (high level)
+## Tracks
+
+| Track | Status |
+|---|---|
+| General qualification (SAK smart account + ERC-7710 in the main flow) | ✅ live |
+| **Best A2A coordination** — 2-hop attenuated redelegation + cause-proven cascade-revoke | ✅ live |
+| **Best use of Venice AI** — TEE model decides the vote; attestation verified | ✅ live |
+| **Best Agent** — autonomous analyze → decide → vote after one grant | ✅ live |
+| Kill-the-chain (the wow) — recall disables root; next redemption reverts | ✅ live |
+| **Best 1Shot Permissionless Relayer** — mainnet `castVote` via 7702 + 7710 (USDC gas) | ◑ client live; mainnet leg pending (~$5) |
+| Best x402 + ERC-7710 (secondary) — agent pays per-query via a scoped delegation | fenced — not shipped by default |
+
+## Run it
+
+```bash
+pnpm install
+pnpm -r build && pnpm -r test          # 84 tests (shared / contracts(Foundry) / orchestrator)
+
+# one-time: generate throwaway demo keys into .env + print a funding checklist
+pnpm bootstrap:accounts                 # then fund the printed addresses from a Base Sepolia faucet
+
+# reproduce the core mechanics live (Base Sepolia, testnet gas only):
+pnpm vote:2hop                          # real 2-hop attenuated delegation → castVote on the Governor
+pnpm revoke:2hop                        # kill-the-chain: disable root → the same fresh chain reverts
+pnpm orchestrate                        # autonomous: grant → Venice TEE decision → real vote
+pnpm proposal --reseed --wait           # refresh the (300s) active proposal window
+
+# the full UI demo:
+pnpm --filter @mandate/orchestrator serve     # HTTP run API on :8787
+pnpm --filter @mandate/app dev                # Next.js app on :3000 (connect MetaMask → Grant → Recall)
+```
+
+> The demo wallet must be the seeded voter: import the `.env` `USER_DEMO_PK` into MetaMask so the
+> connected smart account is the one seeded with voting power.
+
+## Architecture
+
+See **[`ARCHITECTURE.md`](./ARCHITECTURE.md)**. In short — a pnpm monorepo:
 
 ```
-User (MetaMask Smart Account)
-   │  createDelegation(FunctionCall: Governor.castVote, proposalId locked, support open)
-   ▼
-Orchestrator agent ──redelegate (narrower)──▶ Analyst agent
-   │                                              │  Venice TEE analysis decides support
-   │                                              │  x402+7710 pays for proposal data
-   ▼                                              ▼
-redeemDelegations([analyst, orchestrator, root]) ─▶ Governor.castVote   (relayed via 1Shot on Base mainnet, EIP-7702 + USDC gas)
-   ▲
-User hits Recall ─▶ disableDelegation(root) ─▶ next redemption reverts ("kill the chain")
+packages/shared/      delegation (ERC-7710) · Governor/proposal helpers · Venice client · 1Shot client · run contract (zod)
+packages/contracts/   Foundry: VotesToken (ERC20Votes, timestamp clock) + MandateGovernor + deploy/propose scripts
+agent/orchestrator/   HTTP service: holds the root, attenuated-redelegates, drives the run state machine
+agent/analyst/        decides support in the Venice TEE and casts by redeeming the chain
+app/                  Next.js 15 — connect, grant (browser signing), live authority graph, Recall
 ```
-
-## Repo structure
-
-```
-spike/        # D1-D3 go/no-go harness (delegation chain + cascade-revoke + 1Shot relay) — see spike/README.md
-contracts/    # (planned) Governor wiring + deploy scripts
-app/          # (planned) Next.js frontend (grant / authority graph / Recall / kill-the-chain demo)
-agent/        # (planned) Orchestrator + Analyst services (Venice TEE, x402, 1Shot relay)
-```
-
-## Getting started
-
-The spike verifies the core mechanics on Base Sepolia. See **[`spike/README.md`](./spike/README.md)** for run steps and the go/no-go checklist.
 
 ## Stack
 
-`@metamask/smart-accounts-kit` (ERC-7710 delegation + redelegation, EIP-7702) · `viem` · 1Shot permissionless relayer (JSON-RPC) · Venice AI (TEE/E2EE inference, x402) · Next.js · Base (8453 / Sepolia 84532).
+`@metamask/smart-accounts-kit@1.6.0` (ERC-7710 delegation/redelegation, EIP-7702, Hybrid smart accounts) ·
+`viem` · OpenZeppelin Contracts `5.6.1` + Foundry · Venice AI (TEE `e2ee-*` models, `/tee/attestation`) ·
+1Shot permissionless relayer (mainnet JSON-RPC) · Pimlico public bundler (UserOps) · Next.js 15 / React 19 ·
+Base (Sepolia 84532 · mainnet 8453).
+
+## Safety / boundaries
+
+Throwaway keys only; secrets stay in `.env` (gitignored). Testnet first. Any mainnet action (the
+1Shot leg, ~$5 USDC) is opt-in and quoted live before signing. The mainnet Governor + every proposal
+carry a `HACKATHON DEMO — NO REAL VALUE` disclaimer.
 
 ## License
 
