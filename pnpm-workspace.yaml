@@ -1,0 +1,7 @@
+packages:
+  - app
+  - agent/orchestrator
+  - agent/analyst
+  - packages/contracts
+  - packages/shared
+  - spike

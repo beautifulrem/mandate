@@ -5,6 +5,8 @@
   "type": "module",
   "description": "D1-D3 go/no-go spike for the Mandate hackathon concept (governance redelegation + cascade-revoke + 1Shot relay).",
   "scripts": {
+    "build": "echo \"Spike build is exercised by spike:gov and spike:1shot\"",
+    "test": "echo \"No automated spike tests configured yet\"",
     "spike:gov": "tsx src/governance-delegation-spike.ts",
     "spike:1shot": "tsx src/oneshot-relay-spike.ts"
   },
