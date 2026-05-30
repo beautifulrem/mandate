@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "bootstrap:accounts": "tsx packages/shared/scripts/bootstrap-accounts.ts",
     "proposal": "tsx packages/shared/scripts/proposal.ts",
+    "vote:2hop": "tsx packages/shared/scripts/vote-2hop.ts",
+    "revoke:2hop": "tsx packages/shared/scripts/revoke-2hop.ts",
     "dev": "echo \"dev orchestration lands in a later task\""
   },
   "devDependencies": {
