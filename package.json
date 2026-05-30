@@ -9,6 +9,7 @@
     "test": "pnpm -r test",
     "lint": "eslint .",
     "bootstrap:accounts": "tsx packages/shared/scripts/bootstrap-accounts.ts",
+    "proposal": "tsx packages/shared/scripts/proposal.ts",
     "dev": "echo \"dev orchestration lands in a later task\""
   },
   "devDependencies": {

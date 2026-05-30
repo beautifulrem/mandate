@@ -10,6 +10,16 @@ export {
 } from './accounts.js';
 export type { MandateAddresses } from './addresses.js';
 export { ADDRESSES } from './addresses.js';
+export type { ProposalPhase, ProposalWindow } from './proposal.js';
+export {
+  assertUsableWindow,
+  demoProposalAction,
+  fetchProposalWindow,
+  GOVERNOR_ABI,
+  ProposalState,
+  proposalWindow,
+  reseedProposal,
+} from './proposal.js';
 export type {
   Decision,
   Delegation,
