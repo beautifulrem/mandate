@@ -20,7 +20,7 @@ On-chain receipts proving each hackathon track. All testnet artifacts are on **B
 |---|---|---|---|
 | 1 | **General qualification** — SAK smart account + ERC-7710 in the main flow | ✅ | the redeem tx below casts a real vote via `@metamask/smart-accounts-kit` |
 | 2 | **Best A2A coordination** (anchor) — 2-hop attenuated redelegation, redeemed on-chain | ✅ | vote + revoke txs below; 3 participants, 2 signed delegations, leaf→root redemption |
-| 3 | **Best 1Shot relayer** — mainnet castVote via 7702 upgrade + 7710 (USDC gas) | ⏳ T16 | — |
+| 3 | **Best 1Shot relayer** — mainnet castVote via 7702 upgrade + 7710 (USDC gas) | ◑ client live | read-only verified vs the live relayer (caps/feeData, minFee $0.01); actual mainnet send = T16 |
 | 4 | **Best Venice AI** — TEE model decides `support`; attestation verified | ✅ | live decisions discriminate (risky→Against, sound→For); `x-venice-tee:true`; attestation `verified:true` (see below) |
 | 5 | **x402 + ERC-7710** (secondary) — analyst pays per-query via scoped delegation | ⏳ T17 | — |
 | 6 | **Best Agent** — autonomous analyze→decide→vote after one grant | ⏳ T10/T11 | — |
