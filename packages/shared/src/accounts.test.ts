@@ -9,6 +9,7 @@ describe('ACCOUNT_ROLES', () => {
       'analyst',
       'veniceWallet',
       'oneShotBurner',
+      'deployer',
     ]);
   });
 

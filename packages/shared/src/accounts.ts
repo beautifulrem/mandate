@@ -54,6 +54,11 @@ export const ACCOUNT_ROLES: readonly AccountRole[] = [
     fundEthMin: 0, fundUsdcMin: 0,
     purpose: 'fresh EOA upgraded to a 7702 smart account THROUGH 1Shot on the mainnet leg (gas paid in USDC)',
   },
+  {
+    id: 'deployer', label: 'Deployer / DAO owner', envKey: 'DEPLOYER_PK', kind: 'eoa',
+    fundEthMin: 0.02, fundUsdcMin: 0,
+    purpose: 'deploys VotesToken + Governor on Base Sepolia and seeds voting power (token owner)',
+  },
 ] as const;
 
 /** Pure: the checksummed EOA address for a private key. */
