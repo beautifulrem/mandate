@@ -36,7 +36,7 @@ Per-track on-chain receipts are in **[`EVIDENCE.md`](./EVIDENCE.md)**.
 | **Best use of Venice AI** — TEE model decides the vote; attestation verified | ✅ live |
 | **Best Agent** — autonomous analyze → decide → vote after one grant | ✅ live |
 | Kill-the-chain (the wow) — recall disables root; next redemption reverts | ✅ live |
-| **Best 1Shot Permissionless Relayer** — mainnet `castVote` via 7702 + 7710 (USDC gas) | ◑ client live; mainnet leg pending (~$5) |
+| **Best 1Shot Permissionless Relayer** — mainnet `castVote` via 7702 + 7710 (USDC gas) | ✅ live on Base mainnet (fee 0.01 USDC, burner 7702-upgraded) |
 | Best x402 + ERC-7710 (secondary) — agent pays per-query via a scoped delegation | fenced — not shipped by default |
 
 ## Run it

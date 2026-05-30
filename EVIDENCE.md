@@ -20,7 +20,7 @@ On-chain receipts proving each hackathon track. All testnet artifacts are on **B
 |---|---|---|---|
 | 1 | **General qualification** — SAK smart account + ERC-7710 in the main flow | ✅ | the redeem tx below casts a real vote via `@metamask/smart-accounts-kit` |
 | 2 | **Best A2A coordination** (anchor) — 2-hop attenuated redelegation, redeemed on-chain | ✅ | vote + revoke txs below; 3 participants, 2 signed delegations, leaf→root redemption |
-| 3 | **Best 1Shot relayer** — mainnet castVote via 7702 upgrade + 7710 (USDC gas) | ◑ client live | read-only verified vs the live relayer (caps/feeData, minFee $0.01); actual mainnet send = T16 |
+| 3 | **Best 1Shot relayer** — mainnet castVote via 7702 upgrade + 7710 (USDC gas) | ✅ live (mainnet) | real Base-mainnet castVote relayed via 1Shot; burner 7702-upgraded; fee 0.01 USDC (see below) |
 | 4 | **Best Venice AI** — TEE model decides `support`; attestation verified | ✅ | live decisions discriminate (risky→Against, sound→For); `x-venice-tee:true`; attestation `verified:true` (see below) |
 | 5 | **x402 + ERC-7710** (secondary) — analyst pays per-query via scoped delegation | ⏳ T17 | — |
 | 6 | **Best Agent** — autonomous analyze→decide→vote after one grant | ✅ | `pnpm orchestrate`: one grant → Venice TEE decision → real castVote; on-chain tally bucket == the decision (see below) |
@@ -48,6 +48,25 @@ On-chain receipts proving each hackathon track. All testnet artifacts are on **B
 - **Attestation** `GET /tee/attestation?model=…` → `verified: true`, `server_verification.tdx`
   all-valid, enclave `signing_address 0x6525e128afcffebf7eed05d485d7be983cdae934`, fresh nonce,
   Intel TDX quote + NVIDIA Hopper evidence. Reproduce via `analyzeProposal` / `fetchAttestation`.
+
+## Best 1Shot — real Base **mainnet** relay (live)
+
+Same Governor + token deployed on **Base mainnet (8453)** (name carries `HACKATHON DEMO — NO REAL
+VALUE / 0 TREASURY`); basescan: `https://basescan.org`.
+
+| What | value |
+|---|---|
+| MandateGovernor (mainnet) | [`0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5`](https://basescan.org/address/0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5) |
+| Burner (7702-upgraded) | [`0x83cA7AF35e85Db90938391290Cdb6A3e6FfaA991`](https://basescan.org/address/0x83cA7AF35e85Db90938391290Cdb6A3e6FfaA991) — code `0xef010063c0c19a…dae32b` |
+
+- **Real mainnet `castVote` relayed via the 1Shot permissionless relayer**: the burner EOA is
+  upgraded to a 7702 stateless delegator **through 1Shot** (authorizationList first-use), signs one
+  ERC-7710 delegation to the relayer's `targetAddress`, and the relayer redeems a bundle
+  [USDC fee → feeCollector, `Governor.castVote`]. **Gas paid in USDC by the relayer** (burner holds
+  0 ETH); fee **0.01 USDC**. castVote tx
+  [`0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07`](https://basescan.org/tx/0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07).
+  On-chain: `hasVoted(burner)=true`, `proposalVotes.For = 1000e18`, burner code = `0xef0100‖impl`.
+  Reproduce: `pnpm 1shot:vote --estimate` (free quote) then `pnpm 1shot:vote`.
 
 ## Best Agent — autonomous loop (live)
 
