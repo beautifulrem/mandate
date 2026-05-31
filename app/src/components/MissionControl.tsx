@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties, ReactNode, RefObject } from 'react';
+import type { RefObject } from 'react';
 import type { Address } from 'viem';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ShieldCheck } from 'lucide-react';
@@ -68,41 +68,32 @@ export interface MissionVM {
   onRecall: () => void;
 }
 
-/** Cockpit grid (desktop ≥1024px). Responsive fallback lands in MC-S9. */
-const COCKPIT: CSSProperties = {
-  display: 'grid',
-  gap: '14px',
-  gridTemplateColumns: 'minmax(280px,320px) minmax(0,1fr) minmax(300px,360px)',
-  gridTemplateRows: 'auto auto minmax(0,1fr) auto auto',
-  gridTemplateAreas: [
-    '"topbar    topbar   topbar"',
-    '"leftrail  dock     dossier"',
-    '"leftrail  stage    dossier"',
-    '"leftrail  actions  dossier"',
-    '"trackrail trackrail trackrail"',
-  ].join('\n'),
-};
-
-/** Labeled placeholder for a region not yet built (removed slice-by-slice). */
-function Region({ area, label, hint, children }: { area: string; label: string; hint?: string; children?: ReactNode }) {
-  return (
-    <section
-      style={{ gridArea: area }}
-      className="min-h-0 rounded-panel border border-dashed border-hairline bg-surface/40 p-4 backdrop-blur"
-    >
-      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-mute">{label}</div>
-      {hint && <div className="mt-1 text-[13px] text-ink-soft">{hint}</div>}
-      {children}
-    </section>
-  );
-}
-
+/**
+ * IMMERSIVE, FRAMELESS cockpit — NO cards. The React Flow permission graph fills the entire
+ * viewport as a living canvas (MC-S2/S3); everything else floats over it as borderless HUD
+ * (typography + glow + soft scrims for legibility), and key data fuses into the graph nodes.
+ */
 export function MissionControl({ vm }: { vm: MissionVM }) {
-  const { t } = vm;
   return (
-    <div style={COCKPIT} className="mx-auto min-h-dvh w-full max-w-[1600px] px-4 py-4 sm:px-6">
-      {/* TopBar — real */}
-      <header style={{ gridArea: 'topbar' }} className="flex items-center justify-between gap-3">
+    <div className="relative h-dvh w-full overflow-hidden">
+      {/* full-bleed living graph backdrop (React Flow lands in MC-S2/S3; aurora shows through) */}
+      <div ref={vm.graphStageRef} className="absolute inset-0">
+        <div className={cn('grid h-full place-items-center', vm.killed ? 'text-bad/70' : 'text-ink-mute/45')}>
+          <span className="font-mono text-sm tracking-wide">
+            {vm.run
+              ? `permission graph · run ${vm.statusKey}`
+              : vm.isConnected
+                ? 'permission graph · connected, ready to grant'
+                : 'permission graph · fills the screen (MC-S2/S3)'}
+          </span>
+        </div>
+      </div>
+
+      {/* soft top scrim for legibility — a fade, not a card */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-base/85 to-transparent" aria-hidden />
+
+      {/* TopBar — frameless, floating over the graph */}
+      <header className="absolute inset-x-0 top-0 z-[3] flex items-center justify-between gap-3 px-6 py-4">
         <div className="flex items-center gap-2.5">
           <span className="grid size-9 place-items-center rounded-xl border border-brand/30 bg-brand/10 text-brand shadow-[0_0_24px_-8px_var(--color-brand)]">
             <ShieldCheck className="size-5" strokeWidth={2} />
@@ -111,29 +102,56 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
         </div>
         <div className="flex items-center gap-2">
           <LangToggle lang={vm.lang} onToggle={vm.toggleLang} />
-          <span className="inline-flex items-center gap-2 rounded-chip border border-hairline bg-surface/60 px-3 py-1.5 text-xs font-semibold text-ink-soft backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-chip border border-hairline bg-surface/40 px-3 py-1.5 text-xs font-semibold text-ink-soft backdrop-blur">
             <StatusDot tone="ok" /> Base Sepolia
           </span>
           <ConnectButton showBalance={false} accountStatus="address" chainStatus="icon" />
         </div>
       </header>
 
-      <Region area="dock" label="Proposal Dock" hint={vm.activeProposal.title[vm.lang]}>
-        <div className="mt-1 text-[11px] text-ink-mute">
+      {/* Proposal — frameless top-center strip (the subject the graph operates on) */}
+      <div className="absolute left-1/2 top-[68px] z-[3] max-w-[640px] -translate-x-1/2 px-4 text-center">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand/80">
           {vm.activeIdx + 1}/{vm.proposalCount} · #{vm.activeProposal.id.toString().slice(-6)}
         </div>
-      </Region>
-
-      <Region area="stage" label="Graph Stage · React Flow" hint="Permission graph — arrives in MC-S2/S3">
-        <div className={cn('mt-3 grid h-full place-items-center text-sm', vm.killed ? 'text-bad' : 'text-ink-mute')}>
-          {vm.run ? `run: ${vm.statusKey}` : vm.isConnected ? 'connected · ready to grant' : 'idle · connect to begin'}
+        <div className="font-display text-xl font-semibold leading-tight text-ink [text-shadow:0_2px_18px_rgba(0,0,0,0.7)]">
+          {vm.activeProposal.title[vm.lang]}
         </div>
-      </Region>
+      </div>
 
-      <Region area="leftrail" label="Left Rail · grant side" hint="SmartAccount · X-Ray · Tamper (MC-S6)" />
-      <Region area="dossier" label="Right Dossier · execution" hint="TEE · tally · proof · x402 · 1Shot (MC-S7)" />
-      <Region area="actions" label="Action Bar" hint="bound-mode + Grant/Vote/Recall (MC-S5)" />
-      <Region area="trackrail" label="Track Rail" hint={t.scorecard?.title ?? '6 tracks (MC-S8)'} />
+      {/* contextual HUD — frameless floating zones (filled in MC-S6/S7) */}
+      <HudZone className="left-6 top-36 w-[300px]" label="grant side · MC-S6" hint="SmartAccount · X-Ray · Tamper" />
+      <HudZone className="right-6 top-36 w-[320px] items-end text-right" label="execution · MC-S7" hint="TEE · tally · proof · x402 · 1Shot" />
+
+      {/* soft bottom scrim */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-base/90 to-transparent" aria-hidden />
+
+      {/* Action zone — frameless bottom-center controls (MC-S5) */}
+      <div className="absolute inset-x-0 bottom-14 z-[3] flex flex-col items-center gap-1.5 text-center">
+        <div className="text-[13px] text-ink-soft/80">
+          {vm.run ? `run ${vm.statusKey}` : vm.isConnected ? 'ready to grant' : 'connect to begin'}
+        </div>
+        <div className="text-[12px] text-ink-mute/70">action controls · grant / vote / recall (MC-S5)</div>
+      </div>
+
+      {/* Track rail — frameless glowing chips, the always-visible judges' checklist (MC-S8) */}
+      <div className="absolute inset-x-0 bottom-4 z-[3] flex items-center justify-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-mute/70">
+        {['4337', '7710', 'A2A', 'TEE', 'x402', '1Shot'].map((k) => (
+          <span key={k} className="transition-colors hover:text-brand">
+            {k}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A borderless floating HUD label zone — no box, just typography over the graph. */
+function HudZone({ className, label, hint }: { className?: string; label: string; hint: string }) {
+  return (
+    <div className={cn('absolute z-[3] flex flex-col gap-1', className)}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-mute/60">{label}</div>
+      <div className="text-[13px] text-ink-soft/75">{hint}</div>
     </div>
   );
 }
