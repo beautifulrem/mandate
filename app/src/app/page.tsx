@@ -7,6 +7,7 @@ import { LangToggle } from '../components/LangToggle';
 import { NumberTicker } from '../components/NumberTicker';
 import { OneShotFinale } from '../components/OneShotFinale';
 import { X402TollGate } from '../components/X402TollGate';
+import { ScoreCard } from '../components/ScoreCard';
 import { PermissionInspector } from '../components/PermissionInspector';
 import { ScopeChip } from '../components/ScopeChip';
 import { TamperProbe } from '../components/TamperProbe';
@@ -288,6 +289,8 @@ export default function Home() {
           );
         })}
       </section>
+
+      <ScoreCard t={t} />
 
       {/* connect + Smart Account identity — Track: MetaMask Smart Accounts */}
       <Panel tone={userSA ? 'brand' : 'default'} glow={!!userSA} pad="lg" className="mb-3.5">

@@ -18,6 +18,17 @@ const en = {
 
   heroEyebrow: 'Revocable agent governance',
   kpi: { caveats: 'Scoped caveats', fee: 'Mainnet relay', networks: 'Networks' },
+  scorecard: {
+    title: 'Track scorecard — every capability, on screen',
+    items: [
+      { name: 'MetaMask Smart Accounts', proof: 'ERC-4337 Hybrid account signs the delegation' },
+      { name: 'ERC-7710 scoped permission', proof: 'Permission X-Ray + live on-chain tamper probe' },
+      { name: 'Best A2A · re-delegation', proof: 'Orchestrator attenuates, then re-delegates to the analyst' },
+      { name: 'Venice AI · TEE', proof: 'Sealed-enclave reasoning + attestation + signature' },
+      { name: 'x402 pay-per-query', proof: 'Scoped ERC-7710 toll + live balanceOf' },
+      { name: '1Shot · mainnet 7710 + 7702', proof: 'Permissionless relay + live 7702 upgrade proof' },
+    ],
+  },
 
   how: [
     { ic: '🎟️', h: '1 · Hand over a locked permission', p: "You sign one permission: an AI may cast this one vote — and nothing else. It can't touch your funds or vote elsewhere." },
@@ -157,6 +168,17 @@ const zh: Dict = {
 
   heroEyebrow: '可撤销的代理治理',
   kpi: { caveats: '锁定 caveat', fee: '主网中继', networks: '网络' },
+  scorecard: {
+    title: '赛道达成清单 —— 每项能力都在屏上',
+    items: [
+      { name: 'MetaMask 智能账户', proof: 'ERC-4337 Hybrid 账户签署委托' },
+      { name: 'ERC-7710 受限权限', proof: '权限 X 光 + 链上实时篡改探针' },
+      { name: 'Best A2A · 再委托', proof: '编排器收窄后再委托给分析员' },
+      { name: 'Venice AI · TEE', proof: '密封飞地推理 + 证明 + 签名' },
+      { name: 'x402 按次付费', proof: '受限 ERC-7710 通行费 + 实时 balanceOf' },
+      { name: '1Shot · 主网 7710 + 7702', proof: '无许可中继 + 实时 7702 升级证明' },
+    ],
+  },
 
   how: [
     { ic: '🎟️', h: '1 · 交出一项锁定权限', p: '你签下一项权限:AI 只能投这一票 —— 别的都不行。它碰不了你的资金,也不能在别处投票。' },
