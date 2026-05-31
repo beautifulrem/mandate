@@ -378,7 +378,10 @@ export default function Home() {
 
       {cfg && <VoteTally proposalId={activeProposal.id} seed={activeProposal.seed} you={userSA?.address} t={t} />}
 
-      {rootDel && cfg && userSA && (
+      {/* live-grant inspection tools — only meaningful while the grant is alive; once revoked,
+          everything reverts for lack of authority (a different thing from scope enforcement), so
+          we retire them rather than show a misleading "scope blocked it" probe. */}
+      {rootDel && cfg && userSA && !killed && (
         <>
           <PermissionInspector rootDel={rootDel} chainId={CHAIN_ID} />
           <TamperProbe
