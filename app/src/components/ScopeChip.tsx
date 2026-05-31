@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type RefObject } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import { Lock } from 'lucide-react';
 import { anchorPoint, type Point } from '../lib/beam';
 import { shortHex } from '../lib/config';
 import type { Dict } from '../lib/i18n';
@@ -70,7 +71,7 @@ export function ScopeChip({
       animate={{ left: pos.x, top: pos.y, scale: redelegated ? 0.9 : 1 }}
       transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 210, damping: 26 }}
     >
-      🔒 {t.scopeChip}
+      <Lock className="size-3" /> {t.scopeChip}
       {redelegated && <span className="scope-chip-att"> · {t.scopeChipAttenuated}</span>}
       {redelegated && redelegationHash && <span className="mono scope-chip-hash"> {shortHex(redelegationHash, 4)}</span>}
     </motion.div>

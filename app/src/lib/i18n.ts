@@ -67,7 +67,7 @@ const en = {
     orch: { who: 'Orchestrator', role: 'narrows the permission' },
     analyst: { who: 'Analyst', role: 'decides + casts the vote' },
   },
-  thinking: '🔒 thinking…',
+  thinking: 'thinking…',
   teeConsoleTitle: 'Sealed enclave · Intel TDX',
   teeFallbackReasoning:
     'Reading the proposal inside the sealed enclave. Weighing alignment, risk, cost and accountability. The public monthly milestone reports, the 2-of-3 multisig release and the unspent-funds clawback materially de-risk the spend. Reaching a verdict…',
@@ -192,7 +192,7 @@ const zh: Dict = {
     orch: { who: '编排器', role: '收窄权限' },
     analyst: { who: '分析员', role: '决策并投票' },
   },
-  thinking: '🔒 思考中…',
+  thinking: '思考中…',
   teeConsoleTitle: '密封飞地 · Intel TDX',
   teeFallbackReasoning:
     '在密封飞地内读取提案。权衡一致性、风险、成本与问责。每月公开里程碑报告、2/3 多签放款与未用资金追回条款显著降低了支出风险。正在得出结论……',

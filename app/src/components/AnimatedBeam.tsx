@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState, type RefObject } from 'react';
+import { Scissors } from 'lucide-react';
 import { anchorPoint, buildBeamPath, type Point } from '../lib/beam';
 
 interface AnimatedBeamProps {
@@ -78,8 +79,8 @@ export function AnimatedBeam({ containerRef, fromRef, toRef, live, killed, curva
       </svg>
 
       {killed && (
-        <span className="beam-cut" style={{ left: mid.x, top: mid.y }} aria-hidden>
-          ✂
+        <span className="beam-cut" style={{ left: mid.x, top: mid.y, color: 'var(--color-state-danger)' }} aria-hidden>
+          <Scissors className="size-4" strokeWidth={2} />
         </span>
       )}
     </>

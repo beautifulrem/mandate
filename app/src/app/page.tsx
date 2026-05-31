@@ -21,10 +21,11 @@ import Jazzicon, { jsNumberForAddress } from 'react-jazzicon';
 import { useAccount, useWalletClient } from 'wagmi';
 import { deriveSmartAccount, signGrant, type SmartAccount } from '../lib/wallet';
 import { motion, useReducedMotion } from 'motion/react';
-import { Award, Ban, Coins, FileText, Gauge, KeyRound, Lock, Network, Scissors, ShieldCheck, Sparkles, Ticket, Undo2, Wallet } from 'lucide-react';
+import { Award, Ban, Bot, Coins, FileText, Gauge, GitBranch, KeyRound, Lock, Network, ScanSearch, Scissors, ShieldCheck, Sparkles, Ticket, Undo2, User, Wallet, Workflow } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel';
 import { Badge, StatusDot, TrackTag } from '../components/ui/Badge';
 import { Stat } from '../components/ui/Stat';
+import { cn } from '../lib/cn';
 
 const ORDER = ['granted', 'redelegated', 'analyzing', 'decided', 'voting', 'voted'];
 const reached = (s: string | undefined, target: string) =>
@@ -356,13 +357,17 @@ export default function Home() {
         </>
       )}
 
-      {/* the animated authority chain — centerpiece */}
-      <div className="card">
-        <div className="label mb-0">{t.chainTitle}</div>
-        <div className={`chain ${killed ? 'killed' : ''} mt-md`} ref={chainRef}>
-          <ChainNode nodeRef={youRef} avatar="🧑" who={t.nodes.you.who} role={t.nodes.you.role} addr={youAddr} active={isConnected} killed={killed} />
-          <ChainNode nodeRef={orchRef} avatar="🤖" who={t.nodes.orch.who} role={t.nodes.orch.role} addr={orchAddr} active={reached(s, 'redelegated')} working={s === 'granted'} killed={killed} />
-          <ChainNode nodeRef={analystRef} avatar="🔎" who={t.nodes.analyst.who} role={t.nodes.analyst.role} addr={analystAddr} active={reached(s, 'analyzing')} working={s === 'redelegated' || s === 'analyzing'} tee={s === 'analyzing'} thinking={t.thinking} killed={killed} />
+      {/* the animated authority chain — centerpiece · Track: A2A re-delegation */}
+      <Panel pad="lg" className="mb-3.5">
+        <PanelHeader
+          icon={GitBranch}
+          title={t.chainTitle}
+          track={<TrackTag tone="info" icon={Workflow}>A2A · ERC-7710 re-delegation</TrackTag>}
+        />
+        <div className={cn('chain mt-2', killed && 'killed')} ref={chainRef}>
+          <ChainNode nodeRef={youRef} icon={User} who={t.nodes.you.who} role={t.nodes.you.role} addr={youAddr} active={isConnected} killed={killed} />
+          <ChainNode nodeRef={orchRef} icon={Bot} who={t.nodes.orch.who} role={t.nodes.orch.role} addr={orchAddr} active={reached(s, 'redelegated')} working={s === 'granted'} killed={killed} />
+          <ChainNode nodeRef={analystRef} icon={ScanSearch} who={t.nodes.analyst.who} role={t.nodes.analyst.role} addr={analystAddr} active={reached(s, 'analyzing')} working={s === 'redelegated' || s === 'analyzing'} tee={s === 'analyzing'} thinking={t.thinking} killed={killed} />
           <AnimatedBeam containerRef={chainRef} fromRef={youRef} toRef={orchRef} live={reached(s, 'redelegated')} killed={killed} />
           <AnimatedBeam containerRef={chainRef} fromRef={orchRef} toRef={analystRef} live={reached(s, 'analyzing')} killed={killed} />
           {run && !killed && (
@@ -372,14 +377,23 @@ export default function Home() {
 
         {/* agent-authority meter — full while the grant is live, snaps to 0 on sever */}
         {run && (
-          <div className={`authority ${killed ? 'killed' : ''} mt-md`}>
-            <span className="label">{t.authority}</span>
-            <div className="ameter"><div className="afill" style={{ width: killed ? '0%' : '100%' }} /></div>
-            <span className="aval"><NumberTicker value={killed ? 0 : 100} suffix="%" /></span>
+          <div className="mt-5 flex items-center gap-3">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">{t.authority}</span>
+            <div className="relative h-2 flex-1 overflow-hidden rounded-chip border border-hairline bg-surface-2">
+              <motion.div
+                className={cn('h-full rounded-chip', killed ? 'bg-bad' : 'bg-gradient-to-r from-brand-deep to-brand shadow-[0_0_12px_var(--color-brand)]')}
+                initial={false}
+                animate={{ width: killed ? '0%' : '100%' }}
+                transition={{ duration: reduce ? 0 : 0.8, ease: EASE_FLUID }}
+              />
+            </div>
+            <span className={cn('w-12 text-right font-mono text-sm font-bold tabular-nums', killed ? 'text-bad' : 'text-brand')}>
+              <NumberTicker value={killed ? 0 : 100} suffix="%" />
+            </span>
           </div>
         )}
 
-        {/* live result */}
+        {/* live result — Venice console re-skinned in Slice 7, vote/recall in Slice 8 */}
         {venice && !killed && <TeeReasoningStream venice={venice} t={t} />}
         {run?.vote && !killed && (
           <div className="vote-proof mt-md">
@@ -405,7 +419,7 @@ export default function Home() {
             <a className="mono" href={`${BASESCAN}/tx/${recallTx}`} target="_blank" rel="noreferrer">{t.proofTx} {shortHex(recallTx ?? undefined, 5)} ↗</a>
           </div>
         )}
-      </div>
+      </Panel>
 
       {/* actions */}
       <div className="card row spread">
@@ -448,16 +462,65 @@ export default function Home() {
   );
 }
 
-function ChainNode({ nodeRef, avatar, who, role, addr, active, working, tee, thinking, killed }: { nodeRef?: React.RefObject<HTMLDivElement | null>; avatar: string; who: string; role: string; addr?: string; active?: boolean; working?: boolean; tee?: boolean; thinking?: string; killed?: boolean }) {
+function ChainNode({
+  nodeRef,
+  icon: Icon,
+  who,
+  role,
+  addr,
+  active,
+  working,
+  tee,
+  thinking,
+  killed,
+}: {
+  nodeRef?: React.RefObject<HTMLDivElement | null>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  who: string;
+  role: string;
+  addr?: string;
+  active?: boolean;
+  working?: boolean;
+  tee?: boolean;
+  thinking?: string;
+  killed?: boolean;
+}) {
   return (
-    <div ref={nodeRef} className={`cnode ${killed ? 'killed' : working ? 'working active' : active ? 'active' : ''}`}>
-      <span className="avatar">{avatar}</span>
-      <div className="who">{who}</div>
-      <div className="role">{role}</div>
-      {tee && !killed && <div className="tee"><span className="sweep" />{thinking}</div>}
+    <div
+      ref={nodeRef}
+      className={cn(
+        'relative z-[1] flex-1 rounded-xl border bg-surface-2/80 px-3 py-4 text-center backdrop-blur transition-all duration-300',
+        killed
+          ? 'border-bad/40 opacity-40 grayscale'
+          : active
+            ? 'border-brand shadow-[0_0_0_1px_var(--color-brand),0_12px_34px_-16px_var(--color-brand)]'
+            : 'border-hairline',
+        working && !killed && 'motion-safe:animate-glow',
+      )}
+    >
+      <span
+        className={cn(
+          'mx-auto mb-2 grid size-11 place-items-center rounded-full border transition-colors duration-300',
+          active && !killed ? 'border-brand/50 bg-brand/15 text-brand' : 'border-hairline bg-surface text-ink-soft',
+        )}
+      >
+        <Icon className="size-5" strokeWidth={1.75} />
+      </span>
+      <div className="font-display text-sm font-semibold text-ink">{who}</div>
+      <div className="mt-0.5 text-[11px] leading-tight text-ink-mute">{role}</div>
+      {tee && !killed && (
+        <div className="relative mt-2 flex h-6 items-center justify-center gap-1.5 overflow-hidden rounded-md border border-dashed border-info/45 bg-info/10 text-[10.5px] text-info motion-safe:animate-pulse">
+          <Lock className="size-3" /> {thinking}
+        </div>
+      )}
       {addr && (
-        <a className="mono label" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 6 }} href={`${BASESCAN}/address/${addr}`} target="_blank" rel="noreferrer">
-          <Jazzicon diameter={15} seed={jsNumberForAddress(addr)} />
+        <a
+          className="mt-1.5 inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-mute transition-colors hover:text-info"
+          href={`${BASESCAN}/address/${addr}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <Jazzicon diameter={14} seed={jsNumberForAddress(addr)} />
           {shortHex(addr, 4)} ↗
         </a>
       )}
