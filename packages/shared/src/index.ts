@@ -118,3 +118,14 @@ export {
   VeniceTraceSchema,
   VoteReceiptSchema,
 } from './api.js';
+export type { Persona } from './voteboard.js';
+export {
+  decodeBallot,
+  DEMO_PERSONAS,
+  DEMO_PROPOSAL_ID,
+  isVoteBoardLive,
+  personaFor,
+  SUPPORT_LABEL,
+  VOTE_BOARD_ABI,
+  VOTE_BOARD_ADDRESS,
+} from './voteboard.js';
