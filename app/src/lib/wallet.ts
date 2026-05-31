@@ -41,9 +41,9 @@ export interface GrantTarget {
   orchestratorSA: Address;
   /** The proposal text the analyst privately evaluates in the Venice TEE (defaults to DEMO_PROPOSAL). */
   proposalText?: string;
-  /** Standing-grant guardrails — user-configurable (defaults 10 votes / 30 days). Baked on-chain. */
-  maxVotes: number;
-  ttlDays: number;
+  /** Standing-grant guardrails — user-configurable; omit one to bound only by the other. Baked on-chain. */
+  maxVotes?: number;
+  ttlDays?: number;
 }
 
 /**
@@ -54,7 +54,7 @@ export async function signGrant(userSA: SmartAccount, target: GrantTarget) {
   const environment = getSmartAccountsEnvironment(CHAIN_ID);
   // STANDING grant: any proposal on this board, vote-only, revocable — bounded by the user's chosen
   // vote cap + validity window (baked into the caveats and enforced on-chain).
-  const expiry = Math.floor(Date.now() / 1000) + target.ttlDays * 24 * 60 * 60;
+  const expiry = target.ttlDays != null ? Math.floor(Date.now() / 1000) + target.ttlDays * 24 * 60 * 60 : undefined;
   const root = buildStandingVoteDelegation({
     governor: target.governor,
     delegate: target.orchestratorSA,

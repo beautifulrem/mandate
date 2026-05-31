@@ -127,27 +127,34 @@ function voteOnlyScope(governor: Address) {
   return { type: ScopeType.FunctionCall, targets: [governor], selectors: [CASTVOTE_SIGNATURE] };
 }
 
-/** timestamp(valid until expiry) + limitedCalls(≤ maxVotes) — the standing-authority guardrails. */
-function standingBounds(environment: SmartAccountsEnvironment, maxVotes: number, expiry: number) {
-  return createCaveatBuilder(environment)
-    .addCaveat('timestamp', { afterThreshold: 0, beforeThreshold: expiry })
-    .addCaveat('limitedCalls', { limit: maxVotes });
+/** Optional standing-authority guardrails: timestamp (valid until `expiry`) and/or limitedCalls
+ *  (≤ `maxVotes`). Each is added only when provided, so the caller can bound by votes, by time,
+ *  or both. (Scope still restricts to castVote-on-this-board with value 0, regardless.) */
+function standingBounds(
+  environment: SmartAccountsEnvironment,
+  opts: { maxVotes?: number; expiry?: number },
+) {
+  let b = createCaveatBuilder(environment);
+  if (opts.expiry != null) b = b.addCaveat('timestamp', { afterThreshold: 0, beforeThreshold: opts.expiry });
+  if (opts.maxVotes != null) b = b.addCaveat('limitedCalls', { limit: opts.maxVotes });
+  return b;
 }
 
 /** ROOT (standing): grant `delegate` the right to cast ANY proposal's vote on `governor`, vote-only,
- *  for up to `maxVotes` redemptions and until `expiry` (unix seconds). Revocable anytime. */
+ *  revocable anytime. Optionally cap by `maxVotes` redemptions and/or expire at `expiry` (unix secs);
+ *  omit one to bound only by the other. */
 export function buildStandingVoteDelegation(args: {
   governor: Address;
   delegate: Address;
   delegator: Address;
   environment: SmartAccountsEnvironment;
-  maxVotes: number;
-  expiry: number;
+  maxVotes?: number;
+  expiry?: number;
   salt?: Hex;
 }): Delegation {
   return createDelegation({
     scope: voteOnlyScope(args.governor),
-    caveats: standingBounds(args.environment, args.maxVotes, args.expiry),
+    caveats: standingBounds(args.environment, { maxVotes: args.maxVotes, expiry: args.expiry }),
     to: args.delegate,
     from: args.delegator,
     environment: args.environment,

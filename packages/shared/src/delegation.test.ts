@@ -97,6 +97,18 @@ describe('buildStandingVoteDelegation (standing root)', () => {
     expect(enforcers).toContain(ce.TimestampEnforcer.toLowerCase());
     expect(enforcers).toContain(ce.LimitedCallsEnforcer.toLowerCase());
   });
+
+  it('bounds by votes only when expiry is omitted (no timestamp enforcer)', () => {
+    const only = buildStandingVoteDelegation({ governor: GOVERNOR, delegate: ORCH, delegator: USER, environment: ENV, maxVotes: 5, salt: '0x01' }).caveats.map((c) => c.enforcer.toLowerCase());
+    expect(only).toContain(ce.LimitedCallsEnforcer.toLowerCase());
+    expect(only).not.toContain(ce.TimestampEnforcer.toLowerCase());
+  });
+
+  it('bounds by time only when maxVotes is omitted (no limitedCalls enforcer)', () => {
+    const only = buildStandingVoteDelegation({ governor: GOVERNOR, delegate: ORCH, delegator: USER, environment: ENV, expiry: EXPIRY, salt: '0x01' }).caveats.map((c) => c.enforcer.toLowerCase());
+    expect(only).toContain(ce.TimestampEnforcer.toLowerCase());
+    expect(only).not.toContain(ce.LimitedCallsEnforcer.toLowerCase());
+  });
 });
 
 describe('redelegateVote (attenuated 2nd hop)', () => {

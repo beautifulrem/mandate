@@ -61,6 +61,7 @@ export default function Home() {
   const [votesUsed, setVotesUsed] = useState(0);
   const [maxVotes, setMaxVotes] = useState(10);
   const [ttlDays, setTtlDays] = useState(30);
+  const [boundMode, setBoundMode] = useState<'votes' | 'days' | 'both'>('both');
   const [busy, setBusy] = useState(false);
   const [recalling, setRecalling] = useState(false);
   const [recallTx, setRecallTx] = useState<string | null>(null);
@@ -164,8 +165,8 @@ export default function Home() {
         proposalId: activeProposal.id.toString(),
         orchestratorSA: cfg.orchestratorSA,
         proposalText: activeProposal.body.en,
-        maxVotes,
-        ttlDays,
+        maxVotes: boundMode === 'days' ? undefined : maxVotes,
+        ttlDays: boundMode === 'votes' ? undefined : ttlDays,
       });
       setRootDel(grant.rootDelegation);
       setGrantedProposalId(activeProposal.id);
@@ -229,7 +230,7 @@ export default function Home() {
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
     { label: t.authority, value: <NumberTicker value={authorityPct} suffix="%" />, tone: killed ? 'ink' : 'brand', icon: Gauge },
-    { label: t.kpi.caveats, value: String(maxVotes), unit: 'votes', tone: 'ink', icon: Vote },
+    { label: t.kpi.caveats, value: boundMode === 'days' ? '∞' : String(maxVotes), unit: 'votes', tone: 'ink', icon: Vote },
     { label: t.kpi.fee, value: '0.01', unit: 'USDC', tone: 'eth', icon: Coins },
     { label: t.kpi.networks, value: '2', unit: 'chains', tone: 'ink', icon: Network },
   ];
@@ -471,12 +472,30 @@ export default function Home() {
         {!grantRunId && !killed && (
           <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-hairline pb-3 text-[13px] text-ink-soft">
             <span className="text-ink-mute">{t.grantScopeLabel}</span>
-            <label className="inline-flex items-center gap-1.5">
-              <NumberField value={maxVotes} min={1} max={100} onChange={setMaxVotes} /> {t.grantVotesUnit}
-            </label>
-            <label className="inline-flex items-center gap-1.5">
-              <NumberField value={ttlDays} min={1} max={365} onChange={setTtlDays} /> {t.grantDaysUnit}
-            </label>
+            <div className="inline-flex rounded-lg border border-hairline bg-surface-2 p-0.5">
+              {(['votes', 'days', 'both'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setBoundMode(m)}
+                  className={cn(
+                    'rounded-md px-2.5! py-1! text-xs font-semibold transition-colors bg-none! shadow-none!',
+                    boundMode === m ? 'bg-brand! text-[#1a0f02]' : 'bg-transparent! text-ink-mute hover:text-ink',
+                  )}
+                >
+                  {m === 'votes' ? t.boundModeVotes : m === 'days' ? t.boundModeDays : t.boundModeBoth}
+                </button>
+              ))}
+            </div>
+            {boundMode !== 'days' && (
+              <label className="inline-flex items-center gap-1.5">
+                <NumberField value={maxVotes} min={1} max={100} onChange={setMaxVotes} /> {t.grantVotesUnit}
+              </label>
+            )}
+            {boundMode !== 'votes' && (
+              <label className="inline-flex items-center gap-1.5">
+                <NumberField value={ttlDays} min={1} max={365} onChange={setTtlDays} /> {t.grantDaysUnit}
+              </label>
+            )}
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -484,7 +503,7 @@ export default function Home() {
             {killed
               ? t.actionDeadHint
               : grantRunId
-                ? formatMessage(t.standingHint, { used: String(votesUsed), max: String(maxVotes) })
+                ? formatMessage(t.standingHint, { used: String(votesUsed), max: boundMode === 'days' ? '∞' : String(maxVotes) })
                 : t.actionLiveHint}
           </div>
           <div className="flex flex-wrap items-center gap-2">
