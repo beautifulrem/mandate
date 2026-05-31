@@ -21,7 +21,7 @@ import Jazzicon, { jsNumberForAddress } from 'react-jazzicon';
 import { useAccount, useWalletClient } from 'wagmi';
 import { deriveSmartAccount, signGrant, type SmartAccount } from '../lib/wallet';
 import { motion, useReducedMotion } from 'motion/react';
-import { Award, Ban, Bot, Coins, FileText, Gauge, GitBranch, KeyRound, Lock, Network, ScanSearch, Scissors, ShieldCheck, Sparkles, Ticket, Undo2, User, Wallet, Workflow } from 'lucide-react';
+import { Activity, AlertTriangle, Award, Ban, Bot, CheckCircle2, Coins, FileText, Gauge, GitBranch, KeyRound, Lock, Network, ScanSearch, Scissors, ShieldCheck, Sparkles, Ticket, Undo2, User, Wallet, Workflow } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel';
 import { Badge, StatusDot, TrackTag } from '../components/ui/Badge';
 import { Stat } from '../components/ui/Stat';
@@ -30,9 +30,9 @@ import { cn } from '../lib/cn';
 const ORDER = ['granted', 'redelegated', 'analyzing', 'decided', 'voting', 'voted'];
 const reached = (s: string | undefined, target: string) =>
   s != null && (ORDER.indexOf(s) >= ORDER.indexOf(target) || s === 'revoked');
-const decisionClass = (d?: string) => (d === 'For' ? 'green' : d === 'Against' ? 'red' : 'amber');
-const statusClass = (status: string) =>
-  status === 'voted' ? 'green' : status === 'failed' || status === 'revoked' ? 'red' : 'amber';
+const decisionTone = (d?: string): 'ok' | 'bad' | 'warn' => (d === 'For' ? 'ok' : d === 'Against' ? 'bad' : 'warn');
+const statusTone = (status: string): 'ok' | 'bad' | 'warn' =>
+  status === 'voted' ? 'ok' : status === 'failed' || status === 'revoked' ? 'bad' : 'warn';
 
 const EASE_FLUID: [number, number, number, number] = [0.16, 1, 0.3, 1];
 const fadeUp = {
@@ -187,18 +187,18 @@ export default function Home() {
     {
       done: reached(s, 'decided'), label: t.steps[2],
       node: venice ? (
-        <div className="body decision mt-sm">
-          <span className={`pill ${decisionClass(venice.decision)}`}>{venice.decision}</span>{' '}
-          {venice.attestation.verified && <span className="pill green">{t.teeAttested}</span>}{' '}
-          <span className="mono label">{venice.model}</span>
-          <div className="rationale">“{venice.rationale}”</div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Badge tone={decisionTone(venice.decision)}>{venice.decision}</Badge>
+          {venice.attestation.verified && <Badge tone="ok">{t.teeAttested}</Badge>}
+          <span className="font-mono text-[11px] text-ink-mute">{venice.model}</span>
+          <span className="w-full text-[13px] italic text-ink-soft">“{venice.rationale}”</span>
         </div>
       ) : null,
     },
     {
       done: reached(s, 'voted'), fail: s === 'failed', label: t.steps[3],
       node: run?.vote ? (
-        <a className="mono body mt-sm" href={`${BASESCAN}/tx/${run.vote.txHash}`} target="_blank" rel="noreferrer">{t.castVoteTx} {shortHex(run.vote.txHash, 5)} ↗</a>
+        <a className="mt-2 inline-block font-mono text-[13px] text-info hover:underline" href={`${BASESCAN}/tx/${run.vote.txHash}`} target="_blank" rel="noreferrer">{t.castVoteTx} {shortHex(run.vote.txHash, 5)} ↗</a>
       ) : null,
     },
   ];
@@ -396,67 +396,103 @@ export default function Home() {
         {/* live result — Venice console re-skinned in Slice 7, vote/recall in Slice 8 */}
         {venice && !killed && <TeeReasoningStream venice={venice} t={t} />}
         {run?.vote && !killed && (
-          <div className="vote-proof mt-md">
-            <div className="vote-burst">
-              <span className="check">✓</span>
-              <span>{t.voteCast}</span>
-              <a className="mono" href={`${BASESCAN}/tx/${run.vote.txHash}`} target="_blank" rel="noreferrer">{shortHex(run.vote.txHash, 5)} ↗</a>
-            </div>
+          <div className="mt-4 space-y-2">
+            <motion.div
+              initial={reduce ? false : { scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+              className="inline-flex items-center gap-2 rounded-chip border border-ok/35 bg-ok/12 px-3 py-1.5 text-sm font-semibold text-ok"
+            >
+              <CheckCircle2 className="size-4" /> {t.voteCast}
+              <a className="font-mono text-xs hover:underline" href={`${BASESCAN}/tx/${run.vote.txHash}`} target="_blank" rel="noreferrer">{shortHex(run.vote.txHash, 5)} ↗</a>
+            </motion.div>
             {userSA && (
-              <div className="executed-banner mt-sm">
-                <div className="row gap-sm">
+              <div className="rounded-xl border border-ok/25 bg-ok/8 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-soft">
                   <span>{formatMessage(t.executedBanner, { address: shortHex(userSA.address, 6) })}</span>
-                  <a className="mono" href={`${BASESCAN}/tx/${run.vote.txHash}`} target="_blank" rel="noreferrer">{t.viewTx} ↗</a>
+                  <a className="font-mono text-info hover:underline" href={`${BASESCAN}/tx/${run.vote.txHash}`} target="_blank" rel="noreferrer">{t.viewTx} ↗</a>
                 </div>
-                <div className="label mt-sm">{t.executedSubtext}</div>
+                <div className="mt-1.5 text-[11px] text-ink-mute">{t.executedSubtext}</div>
               </div>
             )}
           </div>
         )}
         {killed && (
-          <div className="recall-confirmation">
-            🔪 <strong>{t.severedBold}</strong> {t.severedRest}{' '}
-            <a className="mono" href={`${BASESCAN}/tx/${recallTx}`} target="_blank" rel="noreferrer">{t.proofTx} {shortHex(recallTx ?? undefined, 5)} ↗</a>
-          </div>
+          <motion.div
+            initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-bad/30 bg-bad/8 px-4 py-3 text-[13px] text-ink-soft"
+          >
+            <Scissors className="size-4 shrink-0 text-bad" />
+            <strong className="text-bad">{t.severedBold}</strong> {t.severedRest}
+            <a className="font-mono text-info hover:underline" href={`${BASESCAN}/tx/${recallTx}`} target="_blank" rel="noreferrer">{t.proofTx} {shortHex(recallTx ?? undefined, 5)} ↗</a>
+          </motion.div>
         )}
       </Panel>
 
       {/* actions */}
-      <div className="card row spread">
-        <div className="label">{killed ? t.actionDeadHint : t.actionLiveHint}</div>
+      <Panel pad="md" className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-[13px] text-ink-soft">{killed ? t.actionDeadHint : t.actionLiveHint}</div>
         {run && run.status === 'voted' && !killed ? (
-          <button className="danger big" onClick={onRecall} disabled={recalling || !rootDel || !userSA} title={t.recallTitle}>{recalling ? t.severing : t.recall}</button>
+          <button className="danger big inline-flex items-center gap-2" onClick={onRecall} disabled={recalling || !rootDel || !userSA} title={t.recallTitle}>
+            <Scissors className="size-4" /> {recalling ? t.severing : t.recall}
+          </button>
         ) : (
-          <button className="big" onClick={onGrant} disabled={grantDisabled({ busy, hasConfig: !!cfg, connected: isConnected && !!userSA, status: s, killed })}>{busy ? t.signing : t.grant}</button>
+          <button className="big" onClick={onGrant} disabled={grantDisabled({ busy, hasConfig: !!cfg, connected: isConnected && !!userSA, status: s, killed })}>
+            {busy ? t.signing : t.grant}
+          </button>
         )}
-      </div>
+      </Panel>
 
-      {error && <div className="card err">⚠ {error}</div>}
+      {error && (
+        <Panel tone="bad" pad="md" className="mb-3.5">
+          <div className="flex items-center gap-2 text-[13px] text-bad">
+            <AlertTriangle className="size-4 shrink-0" /> {error}
+          </div>
+        </Panel>
+      )}
 
       {/* technical detail / proof */}
       {run && (
-        <div className="card">
-          <div className="row spread mb-0">
-            <div className="label">{t.underHood} <span className="mono">{shortHex(run.runId, 6)}</span></div>
-            <StatusPill cls={statusClass(statusKey)} label={t.status[statusKey as keyof typeof t.status] ?? statusKey} />
-          </div>
-          <div className="steps">
+        <Panel pad="lg" className="mb-3.5">
+          <PanelHeader
+            icon={Activity}
+            title={
+              <span className="flex items-center gap-2">
+                {t.underHood} <span className="font-mono text-xs text-ink-mute">{shortHex(run.runId, 6)}</span>
+              </span>
+            }
+            right={<Badge tone={statusTone(statusKey)}>{t.status[statusKey as keyof typeof t.status] ?? statusKey}</Badge>}
+          />
+          <div className="mt-1">
             {steps.map((st, i) => (
-              <Step key={i} done={st.done} current={i === currentIdx} fail={st.fail} label={st.label}>{st.node}</Step>
+              <Step key={i} done={st.done} current={i === currentIdx} fail={st.fail} last={i === steps.length - 1} label={st.label}>
+                {st.node}
+              </Step>
             ))}
           </div>
-          <div className="hashes">
-            <div className="hrow"><span className="label">{t.rootHash}</span><span className="mono">{shortHex(run.delegations.rootHash, 6)}</span></div>
-            <div className="hrow"><span className="label">{t.redelegationHash}</span><span className="mono">{run.delegations.redelegationHash ? shortHex(run.delegations.redelegationHash, 6) : '—'}</span></div>
+          <div className="mt-3 grid gap-2 rounded-xl border border-hairline bg-surface-2/60 px-4 py-3">
+            <div className="flex justify-between gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-mute">{t.rootHash}</span>
+              <span className="font-mono text-xs text-ink-soft">{shortHex(run.delegations.rootHash, 6)}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-mute">{t.redelegationHash}</span>
+              <span className="font-mono text-xs text-ink-soft">{run.delegations.redelegationHash ? shortHex(run.delegations.redelegationHash, 6) : '—'}</span>
+            </div>
           </div>
-          {run.error && <div className="err mt-md">⚠ {run.error.code}: {run.error.message}</div>}
-        </div>
+          {run.error && (
+            <div className="mt-3 flex items-center gap-2 text-[13px] text-bad">
+              <AlertTriangle className="size-4 shrink-0" /> {run.error.code}: {run.error.message}
+            </div>
+          )}
+        </Panel>
       )}
 
       <OneShotFinale t={t} />
 
-      <p className="label mt-lg">
-        {t.footer.a}<span className="mono">pnpm --filter @mandate/orchestrator serve</span>{t.footer.b}<span className="mono">pnpm proposal --reseed</span>{t.footer.c}
+      <p className="mt-10 text-center text-[11px] leading-relaxed text-ink-mute">
+        {t.footer.a}<span className="font-mono text-ink-soft">pnpm --filter @mandate/orchestrator serve</span>{t.footer.b}<span className="font-mono text-ink-soft">pnpm proposal --reseed</span>{t.footer.c}
       </p>
     </div>
   );
@@ -528,15 +564,36 @@ function ChainNode({
   );
 }
 
-function StatusPill({ cls, label }: { cls: string; label: string }) {
-  return <span className={`pill ${cls}`}>{label}</span>;
-}
-
-function Step({ done, current, fail, label, children }: { done?: boolean; current?: boolean; fail?: boolean; label: string; children?: React.ReactNode }) {
+function Step({
+  done,
+  current,
+  fail,
+  last,
+  label,
+  children,
+}: {
+  done?: boolean;
+  current?: boolean;
+  fail?: boolean;
+  last?: boolean;
+  label: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className={`step ${fail ? 'fail' : done ? 'done' : current ? 'current' : ''}`}>
-      <div className="rail"><div className="dot" /><div className="line" /></div>
-      <div><div>{label}</div>{children}</div>
+    <div className="flex gap-3">
+      <div className="flex flex-none flex-col items-center">
+        <span
+          className={cn(
+            'mt-1.5 size-2.5 flex-none rounded-full transition-colors',
+            fail ? 'bg-bad' : done ? 'bg-ok' : current ? 'bg-brand motion-safe:animate-glow' : 'bg-line',
+          )}
+        />
+        {!last && <span className="mt-1 w-px flex-1 bg-hairline" />}
+      </div>
+      <div className="pb-3">
+        <div className={cn('text-[13.5px]', done || current ? 'text-ink' : 'text-ink-mute')}>{label}</div>
+        {children}
+      </div>
     </div>
   );
 }

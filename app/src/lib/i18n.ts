@@ -82,7 +82,7 @@ const en = {
 
   actionLiveHint: 'Sign once. The agents do the rest. Revoke whenever you want.',
   actionDeadHint: 'This grant is dead. Re-connect or reload to start over.',
-  recall: '✂️ Recall — kill the chain',
+  recall: 'Recall — kill the chain',
   recallTitle: 'DelegationManager.disableDelegation · selector 0x49934047',
   severing: 'Severing…',
   grant: 'Grant one-vote authority',
@@ -208,7 +208,7 @@ const zh: Dict = {
 
   actionLiveHint: '只签一次,余下交给代理。你随时可以撤销。',
   actionDeadHint: '该授权已失效。重新连接或刷新页面可重新开始。',
-  recall: '✂️ 撤销 —— 斩断授权链',
+  recall: '撤销 —— 斩断授权链',
   recallTitle: 'DelegationManager.disableDelegation · selector 0x49934047',
   severing: '斩断中…',
   grant: '授予一次投票权',
