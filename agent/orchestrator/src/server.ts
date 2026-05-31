@@ -23,6 +23,7 @@ import {
 
 import { RunStore } from './runStore.js';
 import { runVote, type OrchestratorConfig } from './runVote.js';
+import { provisionSmartAccount } from './provision.js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 loadDotenv({ path: path.join(REPO_ROOT, '.env') });
@@ -87,10 +88,29 @@ async function handleGrant(req: http.IncomingMessage, res: http.ServerResponse):
   send(res, 201, { runId: run.runId });
 }
 
+/**
+ * Deploy a connecting wallet's smart account so it can be voted-as on the shared VoteBoard.
+ * Any judge can join: we derive their Hybrid SA from the EOA and pay the one-time deploy.
+ */
+async function handleProvision(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const deployerPk = (process.env.DEPLOYER_PK ?? '') as Hex;
+  if (!deployerPk) return send(res, 500, { error: 'orchestrator not configured (DEPLOYER_PK)' });
+  const body = (await readJson(req).catch(() => null)) as { eoa?: string } | null;
+  const eoa = body?.eoa;
+  if (!eoa || !/^0x[0-9a-fA-F]{40}$/.test(eoa)) return send(res, 400, { error: 'invalid eoa' });
+  try {
+    const result = await provisionSmartAccount({ rpcUrl: cfg.rpcUrl, deployerPk }, eoa as Address);
+    send(res, 200, result);
+  } catch (err) {
+    send(res, 500, { error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   if (req.method === 'OPTIONS') return send(res, 204, {});
   if (req.method === 'POST' && url.pathname === '/grant') return void handleGrant(req, res);
+  if (req.method === 'POST' && url.pathname === '/provision') return void handleProvision(req, res);
   if (req.method === 'GET' && url.pathname === '/runs') return send(res, 200, store.list());
   if (req.method === 'GET' && url.pathname.startsWith('/run/')) {
     const run = store.get(url.pathname.slice('/run/'.length));
