@@ -225,7 +225,7 @@ export default function Home() {
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
     { label: t.authority, value: <NumberTicker value={authorityPct} suffix="%" />, tone: killed ? 'ink' : 'brand', icon: Gauge },
-    { label: t.kpi.caveats, value: '4', unit: 'locked', tone: 'ink', icon: Lock },
+    { label: t.kpi.caveats, value: '10', unit: 'votes', tone: 'ink', icon: Vote },
     { label: t.kpi.fee, value: '0.01', unit: 'USDC', tone: 'eth', icon: Coins },
     { label: t.kpi.networks, value: '2', unit: 'chains', tone: 'ink', icon: Network },
   ];

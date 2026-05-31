@@ -19,6 +19,7 @@ export {
   delegationHash,
   delegationManagerAddress,
   freshSalt,
+  redeemTamperCalldata,
   redeemVoteCalldata,
   redelegateStandingVote,
   redelegateVote,

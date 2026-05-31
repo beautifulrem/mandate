@@ -197,6 +197,17 @@ export function redeemVoteCalldata(args: {
   }) as Hex;
 }
 
+/** Encode a redemption attempting an ARBITRARY (tampered) execution — used by the Tamper Probe to
+ *  prove the standing scope rejects anything but castVote on the board (e.g. moving funds). */
+export function redeemTamperCalldata(args: { chain: Delegation[]; target: Address; callData: Hex }): Hex {
+  const execution = createExecution({ target: args.target, callData: args.callData });
+  return contracts.DelegationManager.encode.redeemDelegations({
+    delegations: [args.chain],
+    modes: [ExecutionMode.SingleDefault],
+    executions: [[execution]],
+  }) as Hex;
+}
+
 /** Encode disabling the root delegation — cascade-revokes the whole chain. */
 export function revokeRootCalldata(rootDelegation: Delegation): Hex {
   return contracts.DelegationManager.encode.disableDelegation({

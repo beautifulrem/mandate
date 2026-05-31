@@ -14,10 +14,10 @@ const en = {
   heroLine1: 'Let an AI vote for you —',
   heroLine2: 'on a leash you can cut anytime.',
   heroSub:
-    'You hand an AI agent ONE locked permission to cast a single DAO vote. It decides privately and votes on-chain. Change your mind? Sever the whole chain in one click — live, on-chain.',
+    'You grant an AI agent a STANDING, vote-only permission: it can vote ANY proposal on this DAO for you (never touch your funds), bounded by votes + time. Change your mind? Sever the whole chain in one click — live, on-chain.',
 
   heroEyebrow: 'Revocable agent governance',
-  kpi: { caveats: 'Scoped caveats', fee: 'Mainnet relay', networks: 'Networks' },
+  kpi: { caveats: 'Vote budget', fee: 'Mainnet relay', networks: 'Networks' },
   scorecard: {
     title: 'Track scorecard — every capability, on screen',
     items: [
@@ -64,8 +64,8 @@ const en = {
   tamperProbeChecking: 'Checking…',
   tamperProbeTimeout:
     'cached fallback: live RPC timed out; the signed scope still shows tampered proposalId is blocked by AllowedCalldataEnforcer.',
-  tamperProbeHonest: 'honest calldata',
-  tamperProbeTampered: 'tampered proposalId=999',
+  tamperProbeHonest: 'castVote — any proposal',
+  tamperProbeTampered: 'tampered — move funds (transfer)',
   tamperProbeIdle: 'not checked',
   tamperProbePass: '✓ would pass',
   tamperProbeRevert: '✗ reverts · {enforcer}',
@@ -78,7 +78,7 @@ const en = {
   governor: 'Governor',
   proposalBody:
     'Proposal: renew the core-dev team budget at 12,000 USDC/quarter, released against public monthly milestone reports via a 2-of-3 multisig, with an unspent-funds clawback. Should the DAO approve?',
-  scopeVote: 'only this vote',
+  scopeVote: 'any proposal · vote-only',
   scopeFunds: "can't move funds",
   scopeRevocable: 'revocable',
 
@@ -177,10 +177,10 @@ const zh: Dict = {
   heroLine1: '让 AI 替你投票 ——',
   heroLine2: '牵着一根你随时能剪断的绳。',
   heroSub:
-    '你只给 AI 代理一项锁定权限:替你投出某一次 DAO 投票。它私密决策并上链投票。改主意了?一键斩断整条授权链 —— 实时、链上完成。',
+    '你给 AI 代理一项常驻、仅限投票的权限:它能替你投这个 DAO 的任意提案(永远碰不到你的钱),受票数与时限约束。改主意了?一键斩断整条授权链 —— 实时、链上完成。',
 
   heroEyebrow: '可撤销的代理治理',
-  kpi: { caveats: '锁定 caveat', fee: '主网中继', networks: '网络' },
+  kpi: { caveats: '投票额度', fee: '主网中继', networks: '网络' },
   scorecard: {
     title: '赛道达成清单 —— 每项能力都在屏上',
     items: [
@@ -227,8 +227,8 @@ const zh: Dict = {
   tamperProbeChecking: '检查中…',
   tamperProbeTimeout:
     '缓存回退:实时 RPC 超时;已签名范围仍显示篡改 proposalId 会被 AllowedCalldataEnforcer 阻止。',
-  tamperProbeHonest: '真实 calldata',
-  tamperProbeTampered: '篡改 proposalId=999',
+  tamperProbeHonest: '投票 castVote(任意提案)',
+  tamperProbeTampered: '篡改 —— 想转账动你的钱',
   tamperProbeIdle: '未检查',
   tamperProbePass: '✓ 会通过',
   tamperProbeRevert: '✗ 回滚 · {enforcer}',
@@ -241,7 +241,7 @@ const zh: Dict = {
   governor: 'Governor 合约',
   proposalBody:
     '提案:将核心开发团队预算按每季度 12,000 USDC 续期,凭每月公开的里程碑报告、经 2/3 多签放款,并对未用资金设追回条款。DAO 是否批准?',
-  scopeVote: '仅限这一票',
+  scopeVote: '任意提案 · 仅投票',
   scopeFunds: '不能动用资金',
   scopeRevocable: '可撤销',
 

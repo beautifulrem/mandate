@@ -4,10 +4,13 @@ import { useState } from 'react';
 import {
   canRedeem,
   delegationManagerAddress,
+  redeemTamperCalldata,
   redeemVoteCalldata,
   type Delegation,
 } from '@mandate/shared';
-import { createPublicClient, http, type Address } from 'viem';
+import { createPublicClient, encodeFunctionData, http, parseAbi, type Address } from 'viem';
+
+const TRANSFER_ABI = parseAbi(['function transfer(address to, uint256 amount)']);
 import { baseSepolia } from 'viem/chains';
 import { Ban, CheckCircle2, Radar } from 'lucide-react';
 import { RPC_URL } from '../lib/config';
@@ -74,7 +77,7 @@ export function TamperProbe({ rootDel, governor, proposalId, chainId }: TamperPr
   const resultLabel = (status: ProbeStatus) => {
     if (status === 'checking') return t.tamperProbeChecking;
     if (status === 'pass') return t.tamperProbePass;
-    if (status === 'revert') return formatMessage(t.tamperProbeRevert, { enforcer: 'AllowedCalldataEnforcer' });
+    if (status === 'revert') return formatMessage(t.tamperProbeRevert, { enforcer: 'AllowedMethodsEnforcer' });
     if (status === 'timeout') return t.tamperProbeFallback;
     return t.tamperProbeIdle;
   };
@@ -84,7 +87,16 @@ export function TamperProbe({ rootDel, governor, proposalId, chainId }: TamperPr
     setTampered('checking');
     try {
       const honestCalldata = redeemVoteCalldata({ chain: [rootDel], governor, proposalId, support: 1 });
-      const tamperedCalldata = redeemVoteCalldata({ chain: [rootDel], governor, proposalId: 999n, support: 1 });
+      // tamper: try to MOVE FUNDS (a transfer) instead of voting — blocked by AllowedMethods (castVote only)
+      const tamperedCalldata = redeemTamperCalldata({
+        chain: [rootDel],
+        target: governor,
+        callData: encodeFunctionData({
+          abi: TRANSFER_ABI,
+          functionName: 'transfer',
+          args: ['0x000000000000000000000000000000000000dEaD', 1n],
+        }),
+      });
       const client = createPublicClient({ chain: baseSepolia, transport: http(RPC_URL) });
       const redeemClient = client as unknown as Parameters<typeof canRedeem>[0];
       const manager = delegationManagerAddress(chainId);
