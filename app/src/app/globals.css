@@ -496,8 +496,8 @@ input:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- buttons ---------- */
-button {
+/* ---------- buttons (zero-specificity base via :where so utility re-skins win) ---------- */
+:where(button) {
   background: linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-accent));
   color: #1a0f02;
   border: 0;
@@ -509,24 +509,24 @@ button {
   transition: filter 0.14s, transform 0.08s, opacity 0.14s, box-shadow 0.14s;
   box-shadow: 0 6px 20px -8px var(--color-brand-glow);
 }
-button:hover:not(:disabled) {
+:where(button:hover:not(:disabled)) {
   filter: brightness(1.08);
   box-shadow: 0 10px 28px -8px var(--color-brand-glow);
 }
-button:active:not(:disabled) {
+:where(button:active:not(:disabled)) {
   transform: translateY(1px);
 }
-button:disabled {
+:where(button:disabled) {
   opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;
 }
-button.danger {
+:where(button.danger) {
   background: linear-gradient(135deg, #f87171, #dc4d4d);
   color: #1a0606;
   box-shadow: 0 6px 20px -8px rgba(248, 113, 113, 0.4);
 }
-button.big {
+:where(button.big) {
   padding: 14px 28px;
   font-size: 16px;
 }

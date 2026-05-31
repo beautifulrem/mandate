@@ -16,6 +16,9 @@ const en = {
   heroSub:
     'You hand an AI agent ONE locked permission to cast a single DAO vote. It decides privately and votes on-chain. Change your mind? Sever the whole chain in one click — live, on-chain.',
 
+  heroEyebrow: 'Revocable agent governance',
+  kpi: { caveats: 'Scoped caveats', fee: 'Mainnet relay', networks: 'Networks' },
+
   how: [
     { ic: '🎟️', h: '1 · Hand over a locked permission', p: "You sign one permission: an AI may cast this one vote — and nothing else. It can't touch your funds or vote elsewhere." },
     { ic: '🔒', h: '2 · AI decides privately, then votes', p: 'The AI reads the proposal inside a sealed secure enclave (TEE) and casts your vote on-chain — provably untampered.' },
@@ -137,6 +140,9 @@ const zh: Dict = {
   heroLine2: '牵着一根你随时能剪断的绳。',
   heroSub:
     '你只给 AI 代理一项锁定权限:替你投出某一次 DAO 投票。它私密决策并上链投票。改主意了?一键斩断整条授权链 —— 实时、链上完成。',
+
+  heroEyebrow: '可撤销的代理治理',
+  kpi: { caveats: '锁定 caveat', fee: '主网中继', networks: '网络' },
 
   how: [
     { ic: '🎟️', h: '1 · 交出一项锁定权限', p: '你签下一项权限:AI 只能投这一票 —— 别的都不行。它碰不了你的资金,也不能在别处投票。' },

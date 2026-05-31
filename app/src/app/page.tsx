@@ -20,6 +20,11 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Jazzicon, { jsNumberForAddress } from 'react-jazzicon';
 import { useAccount, useWalletClient } from 'wagmi';
 import { deriveSmartAccount, signGrant, type SmartAccount } from '../lib/wallet';
+import { motion, useReducedMotion } from 'motion/react';
+import { Coins, Gauge, Lock, Network, Scissors, ShieldCheck, Sparkles, Ticket } from 'lucide-react';
+import { Panel } from '../components/ui/Panel';
+import { StatusDot } from '../components/ui/Badge';
+import { Stat } from '../components/ui/Stat';
 
 const ORDER = ['granted', 'redelegated', 'analyzing', 'decided', 'voting', 'voted'];
 const reached = (s: string | undefined, target: string) =>
@@ -27,6 +32,13 @@ const reached = (s: string | undefined, target: string) =>
 const decisionClass = (d?: string) => (d === 'For' ? 'green' : d === 'Against' ? 'red' : 'amber');
 const statusClass = (status: string) =>
   status === 'voted' ? 'green' : status === 'failed' || status === 'revoked' ? 'red' : 'amber';
+
+const EASE_FLUID: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const fadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE_FLUID } },
+};
+const HOW_ICONS = [Ticket, Lock, Scissors];
 
 export default function Home() {
   const [lang, setLang] = useState<Lang>('en');
@@ -48,6 +60,7 @@ export default function Home() {
   const analystRef = useRef<HTMLDivElement>(null);
 
   const t = getDict(lang);
+  const reduce = useReducedMotion();
 
   // Pick language after mount (stored choice, else browser locale) so the first
   // client render matches the server's 'en' default — no hydration mismatch.
@@ -153,6 +166,19 @@ export default function Home() {
   const orchAddr = parts?.orchestrator ?? cfg?.orchestratorSA;
   const analystAddr = parts?.analyst ?? cfg?.analyst;
   const killed = !!recallTx;
+  const authorityPct = run && !killed ? 100 : 0;
+  const kpis: {
+    label: string;
+    value: React.ReactNode;
+    unit?: string;
+    tone: 'ink' | 'brand' | 'eth';
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    { label: t.authority, value: <NumberTicker value={authorityPct} suffix="%" />, tone: killed ? 'ink' : 'brand', icon: Gauge },
+    { label: t.kpi.caveats, value: '4', unit: 'locked', tone: 'ink', icon: Lock },
+    { label: t.kpi.fee, value: '0.01', unit: 'USDC', tone: 'eth', icon: Coins },
+    { label: t.kpi.networks, value: '2', unit: 'chains', tone: 'ink', icon: Network },
+  ];
 
   const steps = [
     { done: reached(s, 'granted'), label: t.steps[0], node: null as React.ReactNode },
@@ -180,30 +206,86 @@ export default function Home() {
   const statusKey = killed ? 'revoked' : run?.status ?? '';
 
   return (
-    <div className="app-shell">
-      <div className="topbar">
-        <div className="brand"><span className="fox">🦊</span><span><span className="mark">Mandate</span></span></div>
-        <div className="topbar-controls">
-          <LangToggle lang={lang} onToggle={toggleLang} />
-          <span className="chain-badge">Base Sepolia</span>
+    <div className="relative mx-auto w-full max-w-5xl px-5 pb-28 pt-6 sm:px-7">
+      {/* top bar */}
+      <header className="mb-8 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-9 place-items-center rounded-xl border border-brand/30 bg-brand/10 text-brand shadow-[0_0_24px_-8px_var(--color-brand)]">
+            <ShieldCheck className="size-5" strokeWidth={2} />
+          </span>
+          <span className="font-display text-lg font-bold tracking-tight text-ink">Mandate</span>
         </div>
-      </div>
+        <div className="flex items-center gap-2">
+          <LangToggle lang={lang} onToggle={toggleLang} />
+          <span className="inline-flex items-center gap-2 rounded-chip border border-hairline bg-surface/60 px-3 py-1.5 text-xs font-semibold text-ink-soft backdrop-blur">
+            <StatusDot tone="ok" /> Base Sepolia
+          </span>
+        </div>
+      </header>
 
-      <div className="hero">
-        <h1 className="title">{t.heroLine1}<br /><span className="hl">{t.heroLine2}</span></h1>
-        <p className="sub">{t.heroSub}</p>
-      </div>
+      {/* hero */}
+      <motion.section
+        className="mb-9"
+        initial={reduce ? false : 'hidden'}
+        animate="show"
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}
+      >
+        <motion.div
+          variants={fadeUp}
+          className="mb-4 inline-flex items-center gap-2 rounded-chip border border-brand/25 bg-brand/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand"
+        >
+          <Sparkles className="size-3.5" /> {t.heroEyebrow}
+        </motion.div>
+        <motion.h1
+          variants={fadeUp}
+          className="font-display text-4xl font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl"
+        >
+          {t.heroLine1}
+          <br />
+          <span className="bg-gradient-to-r from-brand via-brand-soft to-brand bg-clip-text text-transparent">
+            {t.heroLine2}
+          </span>
+        </motion.h1>
+        <motion.p variants={fadeUp} className="mt-4 max-w-2xl text-[15px] leading-relaxed text-ink-soft">
+          {t.heroSub}
+        </motion.p>
 
-      {/* plain-language explainer */}
-      <div className="how">
-        {t.how.map((step, i) => (
-          <div className="how-step" key={i}>
-            <div className="ic">{step.ic}</div>
-            <div className="h">{step.h}</div>
-            <div className="p">{step.p}</div>
-          </div>
-        ))}
-      </div>
+        {/* live KPI strip */}
+        <motion.div
+          variants={fadeUp}
+          className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-hairline bg-hairline sm:grid-cols-4"
+        >
+          {kpis.map((k) => (
+            <div key={k.label} className="bg-surface/70 px-4 py-3.5 backdrop-blur">
+              <Stat label={k.label} value={k.value} unit={k.unit} tone={k.tone} icon={k.icon} />
+            </div>
+          ))}
+        </motion.div>
+      </motion.section>
+
+      {/* how it works */}
+      <section className="mb-8 grid gap-3 sm:grid-cols-3">
+        {t.how.map((step, i) => {
+          const HowIcon = HOW_ICONS[i];
+          return (
+            <motion.div
+              key={i}
+              initial={reduce ? false : { opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.4, delay: i * 0.08, ease: EASE_FLUID }}
+            >
+              <Panel pad="md" className="h-full">
+                <span className="mb-3 inline-flex size-10 items-center justify-center rounded-xl border border-hairline bg-surface-2 text-brand">
+                  <HowIcon className="size-5" strokeWidth={1.75} />
+                </span>
+                <div className="font-display text-[15px] font-semibold text-ink">{step.h}</div>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">{step.p}</p>
+              </Panel>
+            </motion.div>
+          );
+        })}
+      </section>
 
       {/* connect — RainbowKit owns wallet selection (EIP-6963) + chain switching */}
       <div className={`card connect-bar ${isConnected ? 'live' : ''} row spread`}>
