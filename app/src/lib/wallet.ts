@@ -11,7 +11,7 @@ import {
   Implementation,
   toMetaMaskSmartAccount,
 } from '@metamask/smart-accounts-kit';
-import { buildVoteDelegation, type Delegation } from '@mandate/shared';
+import { buildStandingVoteDelegation, type Delegation } from '@mandate/shared';
 import { CHAIN_ID, DEMO_PROPOSAL, RPC_URL } from './config';
 
 export type SmartAccount = Awaited<ReturnType<typeof toMetaMaskSmartAccount>>;
@@ -49,12 +49,15 @@ export interface GrantTarget {
  */
 export async function signGrant(userSA: SmartAccount, target: GrantTarget) {
   const environment = getSmartAccountsEnvironment(CHAIN_ID);
-  const root = buildVoteDelegation({
+  // STANDING grant: any proposal on this board, vote-only, up to 10 votes, valid 30 days, revocable.
+  const expiry = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+  const root = buildStandingVoteDelegation({
     governor: target.governor,
-    proposalId: BigInt(target.proposalId),
     delegate: target.orchestratorSA,
     delegator: userSA.address,
     environment,
+    maxVotes: 10,
+    expiry,
   });
   const signature = (await userSA.signDelegation({ delegation: root })) as Hex;
   const rootDelegation: Delegation = { ...root, signature };

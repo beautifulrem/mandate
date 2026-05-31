@@ -19,7 +19,7 @@ import {
   DEMO_PROPOSAL_ID,
   VOTE_BOARD_ABI,
   VOTE_BOARD_ADDRESS,
-  buildVoteDelegation,
+  buildStandingVoteDelegation,
   type Delegation,
 } from '../src/index.js';
 
@@ -71,14 +71,16 @@ async function main() {
   }).then((r) => r.json());
   console.log('       ', prov);
 
-  console.log('[3/5] sign one-vote grant scoped to VoteBoard…');
+  console.log('[3/5] sign STANDING grant scoped to VoteBoard (any proposal · ≤10 votes · 30d)…');
   const environment = getSmartAccountsEnvironment(baseSepolia.id);
-  const root = buildVoteDelegation({
+  const expiry = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+  const root = buildStandingVoteDelegation({
     governor: VOTE_BOARD_ADDRESS,
-    proposalId: DEMO_PROPOSAL_ID,
     delegate: ADDRESSES.accounts.orchestrator as Address,
     delegator: sa.address,
     environment,
+    maxVotes: 10,
+    expiry,
   });
   const signature = (await sa.signDelegation({ delegation: root })) as Hex;
   const rootDelegation: Delegation = { ...root, signature };

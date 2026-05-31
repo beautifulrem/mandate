@@ -9,7 +9,7 @@ import { getSmartAccountsEnvironment, Implementation, toMetaMaskSmartAccount } f
 import {
   delegationHash,
   delegationManagerAddress,
-  redelegateVote,
+  redelegateStandingVote,
   type Delegation,
   type GrantRequest,
   type VeniceConfig,
@@ -45,9 +45,9 @@ export async function runVote(
     const governor = grant.governor as Address;
     const root = grant.rootDelegation as unknown as Delegation;
 
-    // attenuated redelegation orchestrator → analyst
-    const redel = redelegateVote({
-      governor, proposalId, delegate: analystEoa.address,
+    // attenuated redelegation orchestrator → analyst (standing: same vote-only scope, any proposal)
+    const redel = redelegateStandingVote({
+      governor, delegate: analystEoa.address,
       delegator: orchSA.address, environment, parentDelegation: root,
     });
     const redelSigned = {
