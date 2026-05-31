@@ -59,6 +59,67 @@ export function decodeBallot(raw: number | bigint): Support | null {
   return v >= 1 && v <= 3 ? ((v - 1) as Support) : null;
 }
 
+/** A DAO proposal in the rotating live feed. `seed` is index-aligned to DEMO_PERSONAS. */
+export interface DaoProposal {
+  id: bigint;
+  title: { en: string; zh: string };
+  body: { en: string; zh: string };
+  seed: Support[];
+}
+
+/**
+ * The rotating governance feed: realistic proposals, each pre-seeded with a DIFFERENT distribution
+ * of persona votes (so the DAO visibly votes differently on each), all on the one shared VoteBoard.
+ * Ids are derived from DEMO_PROPOSAL_ID so they stay distinct + big like real Governor ids.
+ */
+export const PROPOSALS: readonly DaoProposal[] = [
+  {
+    id: DEMO_PROPOSAL_ID,
+    seed: [1, 1, 0, 1, 2],
+    title: { en: 'Renew core-dev team budget', zh: '续期核心开发团队预算' },
+    body: {
+      en: 'Renew the core-dev team budget at 12,000 USDC/quarter, released against public monthly milestone reports via a 2-of-3 multisig, with an unspent-funds clawback. Should the DAO approve?',
+      zh: '将核心开发团队预算按每季度 12,000 USDC 续期,凭每月公开的里程碑报告、经 2/3 多签放款,并对未用资金设追回条款。DAO 是否批准?',
+    },
+  },
+  {
+    id: DEMO_PROPOSAL_ID + 1n,
+    seed: [0, 0, 1, 2, 0],
+    title: { en: '50k USDC liquidity-incentive program', zh: '5 万 USDC 流动性激励计划' },
+    body: {
+      en: 'Allocate 50,000 USDC from the treasury to a 6-month liquidity-incentive program for the MVOTE/USDC pool, reviewed monthly by the DAO. Approve?',
+      zh: '从国库拨款 50,000 USDC,为 MVOTE/USDC 池设立 6 个月流动性激励计划,由 DAO 按月复核。是否批准?',
+    },
+  },
+  {
+    id: DEMO_PROPOSAL_ID + 2n,
+    seed: [1, 2, 1, 1, 1],
+    title: { en: 'Engage Spearbit for the v2 audit', zh: '聘请 Spearbit 审计 v2' },
+    body: {
+      en: 'Engage Spearbit to audit the v2 delegation contracts for 30,000 USDC, with the full report published before any mainnet deployment. Approve?',
+      zh: '以 30,000 USDC 聘请 Spearbit 审计 v2 委托合约,完整报告须在任何主网部署前公开。是否批准?',
+    },
+  },
+  {
+    id: DEMO_PROPOSAL_ID + 3n,
+    seed: [0, 1, 0, 0, 2],
+    title: { en: 'Lower proposal quorum 10% → 6%', zh: '提案法定门槛 10% → 6%' },
+    body: {
+      en: 'Lower the proposal quorum from 10% to 6% of supply to improve participation, as a one-month trial that auto-reverts unless renewed. Approve?',
+      zh: '将提案法定门槛由 10% 降至 6% 以提升参与度,试行一个月,到期不续则自动恢复。是否批准?',
+    },
+  },
+  {
+    id: DEMO_PROPOSAL_ID + 4n,
+    seed: [1, 1, 1, 2, 0],
+    title: { en: '100k USDC community grants round', zh: '10 万 USDC 社区资助轮' },
+    body: {
+      en: 'Fund a 100,000 USDC community grants round, disbursed by a 3-of-5 multisig against public deliverables and a quarterly retrospective. Approve?',
+      zh: '设立 100,000 USDC 社区资助轮,由 3/5 多签凭公开交付物发放,并做季度复盘。是否批准?',
+    },
+  },
+];
+
 /** Minimal VoteBoard ABI: the castVote write + the tally/voters/vote reads. */
 export const VOTE_BOARD_ABI = [
   {
