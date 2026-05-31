@@ -1,3 +1,5 @@
+@import 'tailwindcss';
+
 :root {
   /* MetaMask-branded dark palette (fox orange on dark neutrals) */
   --color-brand-primary: #f6851b;
