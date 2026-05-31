@@ -1,7 +1,15 @@
 import type { Metadata } from 'next';
+import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import { THEME_KEY } from '../lib/theme';
 import { Providers } from './providers';
 import './globals.css';
+
+// Web3 type system: Inter (body), Space Grotesk (display/headings), JetBrains Mono
+// (addresses, hashes, numbers — tabular figures). Self-hosted via next/font (no CLS,
+// no external request). Non-latin (中文) falls back to the system CJK stack per-glyph.
+const sans = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+const display = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-display', display: 'swap' });
+const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Mandate — Revocable AI Governance Delegation',
@@ -17,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // suppressHydrationWarning: the inline script sets data-theme, and browser
     // extensions (Dark Reader, …) inject attributes — both are benign mismatches.
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
