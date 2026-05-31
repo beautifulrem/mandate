@@ -22,7 +22,7 @@ import {
 } from '@mandate/shared';
 
 import { RunStore } from './runStore.js';
-import { runVote, type OrchestratorConfig } from './runVote.js';
+import { runVote, voteAgain, chainMeta, type OrchestratorConfig } from './runVote.js';
 import { provisionSmartAccount } from './provision.js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -106,10 +106,40 @@ async function handleProvision(req: http.IncomingMessage, res: http.ServerRespon
   }
 }
 
+/**
+ * Cast on ANOTHER proposal reusing an existing run's STANDING chain — no new user signature.
+ * Creates a fresh run that re-redeems the cached chain; reverts on-chain (run → failed) if the
+ * grant is exhausted (LimitedCalls), expired (Timestamp), or revoked (disableDelegation).
+ */
+async function handleVoteAgain(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  if (!cfg.orchestratorPk || !cfg.analystPk || !cfg.veniceCfg.apiKey) {
+    return send(res, 500, { error: 'orchestrator not configured' });
+  }
+  const body = (await readJson(req).catch(() => null)) as
+    | { runId?: string; proposalId?: string; proposalText?: string }
+    | null;
+  const fromRunId = body?.runId;
+  const proposalId = body?.proposalId;
+  if (!fromRunId || !proposalId) return send(res, 400, { error: 'runId + proposalId required' });
+  const meta = chainMeta(fromRunId);
+  const origRun = store.get(fromRunId);
+  if (!meta || !origRun) return send(res, 404, { error: 'no standing chain for that run — grant first' });
+
+  const newRun = store.create({
+    chainId: meta.chainId,
+    governor: meta.governor,
+    proposalId,
+    delegations: { rootHash: origRun.delegations.rootHash, participants: origRun.delegations.participants },
+  });
+  void voteAgain(store, fromRunId, newRun.runId, BigInt(proposalId), body?.proposalText ?? '', cfg);
+  send(res, 201, { runId: newRun.runId });
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   if (req.method === 'OPTIONS') return send(res, 204, {});
   if (req.method === 'POST' && url.pathname === '/grant') return void handleGrant(req, res);
+  if (req.method === 'POST' && url.pathname === '/vote-again') return void handleVoteAgain(req, res);
   if (req.method === 'POST' && url.pathname === '/provision') return void handleProvision(req, res);
   if (req.method === 'GET' && url.pathname === '/runs') return send(res, 200, store.list());
   if (req.method === 'GET' && url.pathname.startsWith('/run/')) {
