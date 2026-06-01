@@ -26,11 +26,18 @@ const panel = cva(
   },
 );
 
-export interface PanelProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof panel> {}
+export interface PanelProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof panel> {
+  /**
+   * Frameless HUD mode (the Mission-Control immersive layout): drop the card chrome entirely —
+   * no border, no glass background, no blur, no shadow, no card padding — so the module's inner
+   * content floats over the living graph. The component keeps its own header + inner rows.
+   */
+  bare?: boolean;
+}
 
-export function Panel({ tone, glow, pad, className, children, ...rest }: PanelProps) {
+export function Panel({ tone, glow, pad, bare = false, className, children, ...rest }: PanelProps) {
   return (
-    <div className={cn(panel({ tone, glow, pad }), className)} {...rest}>
+    <div className={cn(bare ? 'relative' : panel({ tone, glow, pad }), className)} {...rest}>
       {children}
     </div>
   );

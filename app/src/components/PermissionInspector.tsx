@@ -13,6 +13,8 @@ import { TrackTag } from './ui/Badge';
 interface PermissionInspectorProps {
   rootDel: Delegation;
   chainId: number;
+  /** Render frameless (no card chrome) for the Mission-Control HUD. */
+  bare?: boolean;
 }
 
 const listVariants = { hidden: {}, show: { transition: { staggerChildren: 0.09 } } };
@@ -28,7 +30,7 @@ function currentDict() {
  * ERC-7710 caveats (locked) plus the one free dimension (vote support), so a
  * judge SEES the scope without reading code.
  */
-export function PermissionInspector({ rootDel, chainId }: PermissionInspectorProps) {
+export function PermissionInspector({ rootDel, chainId, bare = false }: PermissionInspectorProps) {
   const t = currentDict();
   const reduceMotion = useReducedMotion();
   const rows = decodeVoteCaveats(rootDel, chainId);
@@ -39,7 +41,7 @@ export function PermissionInspector({ rootDel, chainId }: PermissionInspectorPro
   const rowMotion = reduceMotion ? { initial: false as const } : { variants: rowVariants };
 
   return (
-    <Panel pad="lg" className="mb-3.5">
+    <Panel pad="lg" bare={bare} className={bare ? '' : 'mb-3.5'}>
       <PanelHeader
         icon={ScanSearch}
         title={t.permissionInspectorTitle}

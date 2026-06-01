@@ -14,6 +14,7 @@ import { StatusDot } from './ui/Badge';
 import { GraphStage } from './graph/GraphStage';
 import { ProposalDock } from './proposal/ProposalDock';
 import { ActionBar } from './panels/ActionBar';
+import { LeftRail } from './layout/LeftRail';
 
 /**
  * The view-model the orchestrator (page.tsx) hands to the single-screen cockpit. It carries the
@@ -114,8 +115,10 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
         t={vm.t}
       />
 
-      {/* contextual HUD — frameless floating zones (filled in MC-S6/S7) */}
-      <HudZone className="left-6 top-36 w-[300px]" label="grant side · MC-S6" hint="SmartAccount · X-Ray · Tamper" />
+      {/* grant-side HUD — Smart Account, Permission X-Ray, Tamper Probe (frameless, contextual) */}
+      <LeftRail vm={vm} />
+
+      {/* execution HUD — frameless floating zone (filled in MC-S7) */}
       <HudZone className="right-6 top-36 w-[320px] items-end text-right" label="execution · MC-S7" hint="TEE · tally · proof · x402 · 1Shot" />
 
       {/* soft bottom scrim */}

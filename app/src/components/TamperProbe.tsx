@@ -24,6 +24,8 @@ interface TamperProbeProps {
   governor: Address;
   proposalId: bigint;
   chainId: number;
+  /** Render frameless (no card chrome) for the Mission-Control HUD. */
+  bare?: boolean;
 }
 
 type ProbeStatus = 'idle' | 'checking' | 'pass' | 'revert' | 'timeout';
@@ -67,7 +69,7 @@ const rowBorder = (s: ProbeStatus): string =>
  * DelegationManager: the honest proposalId passes, a tampered proposalId=999
  * reverts at AllowedCalldataEnforcer. Proves the scope is enforced on-chain.
  */
-export function TamperProbe({ rootDel, governor, proposalId, chainId }: TamperProbeProps) {
+export function TamperProbe({ rootDel, governor, proposalId, chainId, bare = false }: TamperProbeProps) {
   const t = currentDict();
   const [honest, setHonest] = useState<ProbeStatus>('idle');
   const [tampered, setTampered] = useState<ProbeStatus>('idle');
@@ -121,7 +123,7 @@ export function TamperProbe({ rootDel, governor, proposalId, chainId }: TamperPr
   }
 
   return (
-    <Panel pad="lg" className="mb-3.5">
+    <Panel pad="lg" bare={bare} className={bare ? '' : 'mb-3.5'}>
       <PanelHeader icon={Radar} title={t.tamperProbeTitle} right={<Badge tone="info">live eth_call</Badge>} />
       <div className="grid gap-2.5">
         <div className={cn('flex items-center justify-between gap-3 rounded-xl border bg-surface-2/60 px-3.5 py-3', rowBorder(honest))}>

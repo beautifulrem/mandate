@@ -352,6 +352,13 @@ input:focus-visible {
 }
 .react-flow__attribution { display: none; }
 
+/* frameless HUD scrollbar — thin, brand-muted, transparent track (the rails over the graph) */
+.hud-scroll { scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }
+.hud-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.hud-scroll::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 999px; }
+.hud-scroll::-webkit-scrollbar-thumb:hover { background: var(--color-ink-mute); }
+.hud-scroll::-webkit-scrollbar-track { background: transparent; }
+
 /* graph animations (MC-S3) */
 @keyframes graphEdgeFlow { to { stroke-dashoffset: -22; } }
 .graph-edge-flow { stroke-dasharray: 9 13; animation: graphEdgeFlow 0.55s linear infinite; }
