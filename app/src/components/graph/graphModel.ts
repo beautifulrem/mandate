@@ -262,7 +262,7 @@ function actorState(
 function roleTone(role: ActorRole, input: BuildGraphInput, failingRole: ActorRole | undefined): GraphTone {
   if (input.killed || failingRole === role) return 'bad';
   if (role === 'you') return 'brand';
-  if (role === 'voteBoard') return input.s === 'voted' ? 'ok' : 'ok';
+  if (role === 'voteBoard') return 'ok';
   if (role === 'analyst' && reached(input.s, 'decided')) return decisionTone(input.venice?.decision);
   return 'info';
 }
