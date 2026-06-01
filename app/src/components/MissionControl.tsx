@@ -8,13 +8,14 @@ import type { DaoProposal, Delegation, RunStatus } from '@mandate/shared';
 import type { DemoConfig } from '../lib/orchestrator';
 import type { SmartAccount } from '../lib/wallet';
 import type { Dict, Lang } from '../lib/i18n';
-import { cn } from '../lib/cn';
 import { LangToggle } from './LangToggle';
 import { StatusDot } from './ui/Badge';
 import { GraphStage } from './graph/GraphStage';
 import { ProposalDock } from './proposal/ProposalDock';
 import { ActionBar } from './panels/ActionBar';
+import { ErrorToast } from './panels/ErrorToast';
 import { LeftRail } from './layout/LeftRail';
+import { RightDossier } from './layout/RightDossier';
 
 /**
  * The view-model the orchestrator (page.tsx) hands to the single-screen cockpit. It carries the
@@ -118,8 +119,11 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
       {/* grant-side HUD — Smart Account, Permission X-Ray, Tamper Probe (frameless, contextual) */}
       <LeftRail vm={vm} />
 
-      {/* execution HUD — frameless floating zone (filled in MC-S7) */}
-      <HudZone className="right-6 top-36 w-[320px] items-end text-right" label="execution · MC-S7" hint="TEE · tally · proof · x402 · 1Shot" />
+      {/* execution-side HUD — TEE, vote result, proof timeline, tally, x402, 1Shot (frameless) */}
+      <RightDossier vm={vm} />
+
+      {/* floating error toast */}
+      <ErrorToast error={vm.error} />
 
       {/* soft bottom scrim */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-base/90 to-transparent" aria-hidden />
@@ -135,16 +139,6 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
           </span>
         ))}
       </div>
-    </div>
-  );
-}
-
-/** A borderless floating HUD label zone — no box, just typography over the graph. */
-function HudZone({ className, label, hint }: { className?: string; label: string; hint: string }) {
-  return (
-    <div className={cn('absolute z-[3] flex flex-col gap-1', className)}>
-      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-mute/60">{label}</div>
-      <div className="text-[13px] text-ink-soft/75">{hint}</div>
     </div>
   );
 }

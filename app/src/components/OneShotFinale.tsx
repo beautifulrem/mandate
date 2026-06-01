@@ -19,7 +19,7 @@ type Phase = 'idle' | 'running' | 'done';
  * of the real relay: the stepper + tx + USDC fee are pinned real artifacts, but the 7702-upgrade
  * proof is a GENUINELY LIVE, free, read-only eth_getCode on Base mainnet — no wallet, no gas.
  */
-export function OneShotFinale({ t }: { t: Dict }) {
+export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) {
   const reduce = useReducedMotion();
   const [phase, setPhase] = useState<Phase>('idle');
   const [step, setStep] = useState(0);
@@ -48,7 +48,7 @@ export function OneShotFinale({ t }: { t: Dict }) {
 
   if (phase === 'idle') {
     return (
-      <Panel tone="eth" pad="lg" className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
+      <Panel tone="eth" pad="lg" bare={bare} className={`${bare ? '' : 'mb-3.5 '}flex flex-wrap items-center justify-between gap-3`}>
         <div className="flex items-center gap-2 text-[13px] text-ink-soft">
           <Radio className="size-4 text-[#8aa0f0]" /> {t.oneShotCtaHint}
         </div>
@@ -62,7 +62,7 @@ export function OneShotFinale({ t }: { t: Dict }) {
   const parsed = parse7702Code(code);
 
   return (
-    <Panel tone="eth" pad="lg" className="mb-3.5">
+    <Panel tone="eth" pad="lg" bare={bare} className={bare ? '' : 'mb-3.5'}>
       <PanelHeader
         icon={Rocket}
         title={t.oneShotTitle}

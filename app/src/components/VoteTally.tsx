@@ -46,11 +46,13 @@ export function VoteTally({
   seed,
   you,
   t,
+  bare = false,
 }: {
   proposalId: bigint;
   seed: readonly number[];
   you?: Address;
   t: Dict;
+  bare?: boolean;
 }) {
   const reduce = useReducedMotion();
   const live = isVoteBoardLive(VOTE_BOARD_ADDRESS);
@@ -113,7 +115,7 @@ export function VoteTally({
   }, [live, proposalId, seed]);
 
   return (
-    <Panel pad="lg" className="mb-3.5">
+    <Panel pad="lg" bare={bare} className={bare ? '' : 'mb-3.5'}>
       <PanelHeader
         icon={Vote}
         title={t.tally.title}

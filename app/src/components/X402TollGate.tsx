@@ -27,7 +27,7 @@ function Row({ k, v }: { k: string; v: ReactNode }) {
  * Erc20TransferAmount delegation that settles it, then traces the 402 -> sign -> redeem -> 200
  * lifecycle and reads the seller's live MVOTE balance on-chain (read-only — no spend).
  */
-export function X402TollGate({ cfg, t }: { cfg: DemoConfig; t: Dict }) {
+export function X402TollGate({ cfg, t, bare = false }: { cfg: DemoConfig; t: Dict; bare?: boolean }) {
   const reduce = useReducedMotion();
   const [step, setStep] = useState(0);
   const [tracing, setTracing] = useState(false);
@@ -63,7 +63,7 @@ export function X402TollGate({ cfg, t }: { cfg: DemoConfig; t: Dict }) {
   }
 
   return (
-    <Panel tone="ok" pad="lg" className="mb-3.5">
+    <Panel tone="ok" pad="lg" bare={bare} className={bare ? '' : 'mb-3.5'}>
       <PanelHeader
         icon={Coins}
         title={t.x402.title}
