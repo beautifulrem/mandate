@@ -1,0 +1,20 @@
+{
+  "name": "@mandate/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": { "mandate-mcp": "./dist/index.js" },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@mandate/shared": "workspace:*",
+    "@metamask/smart-accounts-kit": "1.6.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.4.7",
+    "viem": "^2.51.3"
+  }
+}

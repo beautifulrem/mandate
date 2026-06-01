@@ -2,6 +2,7 @@ packages:
   - app
   - agent/orchestrator
   - agent/analyst
+  - agent/mandate-mcp
   - packages/contracts
   - packages/shared
   - spike
