@@ -18,6 +18,30 @@
 5. **Recall** — you hit **Recall** → one `disableDelegation` on the root makes every redemption of
    the chain revert. *Self-custody you can watch.*
 
+## Why ERC-7710 — nothing weaker gives all four at once
+
+Letting an AI vote *your* governance demands **four properties at the same time**, and only a
+scoped, revocable ERC-7710 delegation delivers all four. Every weaker option fails at least one:
+
+| Approach | Vote-only (can't touch funds) | Bounded (≤N votes, expires) | Revocable on-chain in one click | Custody kept (key never exposed) |
+|---|:--:|:--:|:--:|:--:|
+| Hand the agent a private key / seed | ❌ can do anything | ❌ | ❌ must rotate the key | ❌ |
+| Broad session key / full-account delegation | ❌ can move funds | ⚠️ | ⚠️ | ✅ |
+| `delegate()` voting power (ERC20Votes) | ⚠️ delegates *weight to an address*, not a *bounded agent mandate* | ❌ | ❌ re-delegate ≠ revoke-an-agent | ✅ |
+| Co-sign every vote | ✅ | n/a | n/a | ✅ but ❌ not autonomous |
+| Custodial "AI voting" service | ✅ | ✅ | ⚠️ trust the operator | ❌ |
+| **Mandate — ERC-7710 scoped + revocable** | ✅ `AllowedMethods`=castVote · `AllowedTargets`=this board | ✅ `LimitedCalls` + `Timestamp` caveats | ✅ `disableDelegation` cascade-revokes the chain | ✅ the EVM enforces — the agent can't override |
+
+A voting agent is the *ideal* 7710 use case: you want it to act **repeatedly and autonomously** (a
+standing mandate), yet provably **only vote — never spend**, and you want to **pull the plug the
+instant it misbehaves**. That exact shape — recurring · scoped-to-one-method · zero-funds · instant
+on-chain revoke — is what ERC-7710 caveats plus `disableDelegation` give, and a bare key, a session
+key, or token-weight `delegate()` do not. Note the contrast: DAOs already let you delegate voting
+*power* to an address you trust to vote however *it* likes; Mandate instead delegates a **scoped,
+bounded, revocable mandate to an agent that decides per-proposal in a TEE** — and you can yank it
+without ever moving your tokens. The **Tamper Probe** proves the negative live: ask the delegated
+agent to move funds and the redemption **reverts at the enforcer**, on-chain.
+
 ## Live on Base Sepolia (84532)
 
 | | address |
@@ -80,6 +104,30 @@ app/                  Next.js 15 — connect, grant (browser signing), live auth
 `viem` · OpenZeppelin Contracts `5.6.1` + Foundry · Venice AI (TEE `e2ee-*` models, `/tee/attestation`) ·
 1Shot permissionless relayer (mainnet JSON-RPC) · Pimlico public bundler (UserOps) · Next.js 15 / React 19 ·
 Base (Sepolia 84532 · mainnet 8453).
+
+## Smart Accounts Kit surface — what Mandate actually calls
+
+Every delegation primitive is the real SDK, verified against `@metamask/smart-accounts-kit@1.6.0`
+(see [`packages/shared/src/delegation.ts`](./packages/shared/src/delegation.ts),
+[`app/src/lib/wallet.ts`](./app/src/lib/wallet.ts), [`app/src/lib/recall.ts`](./app/src/lib/recall.ts)):
+
+| API | Where | Role in the mandate |
+|---|---|---|
+| `toMetaMaskSmartAccount(Implementation.Hybrid)` | `wallet.ts`, agents | the user / orchestrator / analyst ERC-4337 smart accounts (EIP-7702 Hybrid) |
+| `getSmartAccountsEnvironment(chainId)` | `delegation.ts` | resolves `DelegationManager` + enforcer addresses per chain |
+| `createDelegation({ scope, to, from, environment, salt })` | `delegation.ts` | the **root** grant |
+| `createDelegation({ …, parentDelegation })` | `delegation.ts` | the **attenuated re-delegation** (orchestrator → analyst), parent-linked |
+| `ScopeType.FunctionCall` (`targets`, `selectors`) | `delegation.ts` | binds the grant to `castVote` on this board only → `AllowedTargets` + `AllowedMethods` enforcers (this is what blocks "move funds") |
+| `createCaveatBuilder(env).addCaveat('timestamp' \| 'limitedCalls')` | `delegation.ts` | the standing bounds → `Timestamp` (expiry) + `LimitedCalls` (≤ maxVotes) enforcers |
+| `account.signDelegation({ delegation })` | `wallet.ts`, orchestrator | EIP-712 signature over each delegation (root + re-delegation) |
+| `createExecution({ target, callData })` + `ExecutionMode.SingleDefault` | `delegation.ts` | the `castVote` action the chain authorizes |
+| `contracts.DelegationManager.encode.redeemDelegations(...)` | `delegation.ts` | the analyst redeems the chain **leaf→root** → executes `castVote` *as the user's smart account* |
+| `contracts.DelegationManager.encode.disableDelegation(...)` | `delegation.ts` | **the kill switch** — disabling the root cascade-revokes the whole chain |
+| `createBundlerClient().sendUserOperation(...)` (viem AA, Pimlico) | `recall.ts` | the recall is a keyless UserOp from the user smart account |
+
+Enforcers exercised: `AllowedTargetsEnforcer` · `AllowedMethodsEnforcer` · `TimestampEnforcer` ·
+`LimitedCallsEnforcer` (plus `AllowedCalldataEnforcer` in the single-proposal CLI path, which locks
+`proposalId`). The decoded scope is rendered live in the app's **Permission X-Ray**.
 
 ## Safety / boundaries
 
