@@ -21,33 +21,41 @@ export function LeftRail({ vm }: { vm: MissionVM }) {
   const showIdentity = vm.isConnected && !!vm.userSA;
   const showScope = !!vm.rootDel && !!vm.cfg && !!vm.userSA && !vm.killed && vm.grantedProposalId != null;
 
-  if (!showIdentity && !showScope) return null;
-
   return (
-    <div className="pointer-events-auto absolute left-5 top-[132px] z-[3] hidden max-h-[calc(100dvh-208px)] w-[320px] flex-col gap-6 overflow-y-auto overflow-x-hidden pr-1 pb-4 hud-scroll lg:flex">
-      <AnimatePresence initial={false}>
-        {showIdentity && (
-          <Reveal key="sa">
-            <SmartAccountCard userSA={vm.userSA!} eoaAddress={vm.address} t={vm.t} />
-          </Reveal>
-        )}
-        {showScope && (
-          <Reveal key="xray">
-            <PermissionInspector rootDel={vm.rootDel!} chainId={CHAIN_ID} bare />
-          </Reveal>
-        )}
-        {showScope && (
-          <Reveal key="tamper">
-            <TamperProbe
-              rootDel={vm.rootDel!}
-              governor={VOTE_BOARD_ADDRESS}
-              proposalId={vm.grantedProposalId!}
-              chainId={CHAIN_ID}
-              bare
-            />
-          </Reveal>
-        )}
-      </AnimatePresence>
+    <div className="hud-scroll flex h-full flex-col gap-6 overflow-y-auto overflow-x-hidden p-4 pt-5">
+      {!showIdentity && !showScope ? (
+        <div className="flex flex-col gap-3">
+          <p className="font-display text-[15px] font-semibold leading-snug text-ink/90">
+            {vm.t.heroLine1} {vm.t.heroLine2}
+          </p>
+          <p className="text-[12px] leading-relaxed text-ink-soft/85">{vm.t.heroSub}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-mute/60">{vm.t.connect}</p>
+        </div>
+      ) : (
+        <AnimatePresence initial={false}>
+          {showIdentity && (
+            <Reveal key="sa">
+              <SmartAccountCard userSA={vm.userSA!} eoaAddress={vm.address} t={vm.t} />
+            </Reveal>
+          )}
+          {showScope && (
+            <Reveal key="xray">
+              <PermissionInspector rootDel={vm.rootDel!} chainId={CHAIN_ID} bare />
+            </Reveal>
+          )}
+          {showScope && (
+            <Reveal key="tamper">
+              <TamperProbe
+                rootDel={vm.rootDel!}
+                governor={VOTE_BOARD_ADDRESS}
+                proposalId={vm.grantedProposalId!}
+                chainId={CHAIN_ID}
+                bare
+              />
+            </Reveal>
+          )}
+        </AnimatePresence>
+      )}
     </div>
   );
 }

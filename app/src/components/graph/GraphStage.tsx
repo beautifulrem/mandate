@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   Background,
   BackgroundVariant,
   ReactFlow,
   ReactFlowProvider,
+  useNodesInitialized,
   useReactFlow,
   type EdgeTypes,
   type NodeTypes,
@@ -34,8 +35,10 @@ const edgeTypes: EdgeTypes = {
   [AUTHORITY_EDGE_TYPE]: AuthorityEdge,
 };
 
-function GraphCanvas({ vm }: { vm: MissionVM }) {
+function GraphCanvas({ vm, fitTick }: { vm: MissionVM; fitTick: number }) {
   const { fitView } = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const copy: GraphCopy = useMemo(
     () => ({
@@ -71,27 +74,43 @@ function GraphCanvas({ vm }: { vm: MissionVM }) {
     [vm.s, vm.killed, vm.youAddr, vm.orchAddr, vm.analystAddr, vm.isConnected, vm.activeProposal.seed, vm.venice, vm.run?.vote, copy],
   );
 
-  // Keep the chain framed. The graph CANVAS is inset to the clear zone between the HUD rails (see
-  // MissionControl), so a small uniform pad is all that's needed; re-fit on resize so the locked
-  // viewport always frames the whole chain.
+  // Frame the chain in the center pane. The first reliable fit must wait until React Flow has
+  // MEASURED the custom nodes (nodesInitialized) — fitting before that mis-sizes the graph. Then
+  // re-fit on every splitter layout change (fitTick) or node-count change, and on window resize.
   useEffect(() => {
-    const fit = () => fitView({ padding: 0.14, duration: 350, maxZoom: 1.15 });
-    const id = setTimeout(fit, 60);
-    if (typeof window !== 'undefined') window.addEventListener('resize', fit);
+    if (!nodesInitialized) return;
+    const id = setTimeout(() => fitView({ padding: 0.18, duration: 0, maxZoom: 1.2 }), 0);
+    return () => clearTimeout(id);
+  }, [nodesInitialized, fitTick, graph.nodes.length, fitView]);
+
+  // The authoritative re-fit: observe the actual rendered size of the graph container. This fires
+  // AFTER the DOM reflows (when the panels settle on mount, on splitter drag/collapse, and on window
+  // resize) — unlike onLayout, which reports sizes before reflow — so fitView always reads the real
+  // pane size. rAF-coalesced so a drag re-fits once per frame.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => fitView({ padding: 0.18, duration: 0, maxZoom: 1.2 }));
+    });
+    ro.observe(el);
     return () => {
-      clearTimeout(id);
-      if (typeof window !== 'undefined') window.removeEventListener('resize', fit);
+      cancelAnimationFrame(raf);
+      ro.disconnect();
     };
-  }, [fitView, graph.nodes.length]);
+  }, [fitView]);
 
   return (
+    <div ref={wrapRef} className="h-full w-full">
     <ReactFlow
       nodes={graph.nodes}
       edges={graph.edges}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       fitView
-      fitViewOptions={{ padding: 0.14, maxZoom: 1.15 }}
+      fitViewOptions={{ padding: 0.18, maxZoom: 1.2 }}
       proOptions={{ hideAttribution: true }}
       nodesDraggable={false}
       nodesConnectable={false}
@@ -108,6 +127,7 @@ function GraphCanvas({ vm }: { vm: MissionVM }) {
     >
       <Background variant={BackgroundVariant.Dots} gap={26} size={1} className="opacity-[0.16]" />
     </ReactFlow>
+    </div>
   );
 }
 
@@ -116,11 +136,11 @@ function GraphCanvas({ vm }: { vm: MissionVM }) {
  * locked — it auto-frames You→Orchestrator→Analyst→VoteBoard. An authority-meter HUD floats over the
  * canvas (DOM overlay, not a graph node); the wrapper shakes on revoke (fireSever is fired by page.tsx).
  */
-export function GraphStage({ vm }: { vm: MissionVM }) {
+export function GraphStage({ vm, fitTick = 0 }: { vm: MissionVM; fitTick?: number }) {
   return (
     <ReactFlowProvider>
       <div className={cn('absolute inset-0', vm.killed && 'graph-node-shake')}>
-        <GraphCanvas vm={vm} />
+        <GraphCanvas vm={vm} fitTick={fitTick} />
         {vm.run && (
           <div className="pointer-events-none absolute bottom-[118px] left-1/2 z-[2] flex -translate-x-1/2 items-center gap-3">
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-mute/70">{vm.t.authority}</span>

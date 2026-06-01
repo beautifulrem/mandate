@@ -40,7 +40,7 @@ export function ProposalDock({
   ];
 
   return (
-    <div className="pointer-events-none absolute left-1/2 top-[60px] z-[3] w-[min(92vw,620px)] -translate-x-1/2 px-4 text-center">
+    <div className="pointer-events-none absolute left-1/2 top-3 z-[3] w-[min(94%,560px)] -translate-x-1/2 px-4 text-center">
       {/* eyebrow — live status · position · id */}
       <div className="flex items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em]">
         <StatusDot tone="ok" />
