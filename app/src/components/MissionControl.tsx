@@ -16,6 +16,7 @@ import { ActionBar } from './panels/ActionBar';
 import { ErrorToast } from './panels/ErrorToast';
 import { LeftRail } from './layout/LeftRail';
 import { RightDossier } from './layout/RightDossier';
+import { TrackRail } from './layout/TrackRail';
 
 /**
  * The view-model the orchestrator (page.tsx) hands to the single-screen cockpit. It carries the
@@ -131,14 +132,8 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
       {/* Action zone — frameless bottom-center controls */}
       <ActionBar vm={vm} />
 
-      {/* Track rail — frameless glowing chips, the always-visible judges' checklist (MC-S8) */}
-      <div className="absolute inset-x-0 bottom-4 z-[3] flex items-center justify-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-mute/70">
-        {['4337', '7710', 'A2A', 'TEE', 'x402', '1Shot'].map((k) => (
-          <span key={k} className="transition-colors hover:text-brand">
-            {k}
-          </span>
-        ))}
-      </div>
+      {/* Track rail — the always-visible judges' checklist (6 tracks, click-to-peek) */}
+      <TrackRail vm={vm} />
     </div>
   );
 }

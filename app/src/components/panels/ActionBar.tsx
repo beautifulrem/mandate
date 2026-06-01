@@ -105,9 +105,16 @@ export function ActionBar({ vm }: { vm: MissionVM }) {
               {vm.busy ? t.signing : t.grant}
             </button>
 
-            <p className="max-w-[460px] text-center text-[12px] leading-relaxed text-ink-mute/85">
-              {vm.isConnected ? t.actionLiveHint : t.connect}
-            </p>
+            {vm.isConnected ? (
+              <p className="max-w-[460px] text-center text-[12px] leading-relaxed text-ink-mute/85">{t.actionLiveHint}</p>
+            ) : (
+              <div className="max-w-[480px] text-center">
+                <p className="font-display text-[15px] font-semibold leading-snug text-ink/90">
+                  {t.heroLine1} {t.heroLine2}
+                </p>
+                <p className="mt-1 text-[12px] text-ink-mute/80">{t.connect}</p>
+              </div>
+            )}
           </motion.div>
         ) : (
           <motion.div key="live" {...enter} transition={{ duration: 0.3, ease: EASE }} className="flex flex-col items-center gap-2.5">
