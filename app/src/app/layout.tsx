@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import { Providers } from './providers';
-import './globals.css';
 import '@xyflow/react/dist/style.css';
+import './globals.css';
 
 // Web3 type system: Inter (body), Space Grotesk (display/headings), JetBrains Mono
 // (addresses, hashes, numbers — tabular figures). Self-hosted via next/font (no CLS,

@@ -11,6 +11,7 @@ import type { Dict, Lang } from '../lib/i18n';
 import { cn } from '../lib/cn';
 import { LangToggle } from './LangToggle';
 import { StatusDot } from './ui/Badge';
+import { GraphStage } from './graph/GraphStage';
 
 /**
  * The view-model the orchestrator (page.tsx) hands to the single-screen cockpit. It carries the
@@ -76,17 +77,9 @@ export interface MissionVM {
 export function MissionControl({ vm }: { vm: MissionVM }) {
   return (
     <div className="relative h-dvh w-full overflow-hidden">
-      {/* full-bleed living graph backdrop (React Flow lands in MC-S2/S3; aurora shows through) */}
+      {/* full-bleed living graph (React Flow) — the immersive centerpiece */}
       <div ref={vm.graphStageRef} className="absolute inset-0">
-        <div className={cn('grid h-full place-items-center', vm.killed ? 'text-bad/70' : 'text-ink-mute/45')}>
-          <span className="font-mono text-sm tracking-wide">
-            {vm.run
-              ? `permission graph · run ${vm.statusKey}`
-              : vm.isConnected
-                ? 'permission graph · connected, ready to grant'
-                : 'permission graph · fills the screen (MC-S2/S3)'}
-          </span>
-        </div>
+        <GraphStage vm={vm} />
       </div>
 
       {/* soft top scrim for legibility — a fade, not a card */}
