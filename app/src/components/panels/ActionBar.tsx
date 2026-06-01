@@ -4,8 +4,9 @@ import type { ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Minus, Plus, Scissors, Vote, Zap } from 'lucide-react';
 import { grantDisabled, voteActiveDisabled } from '../../lib/flow';
-import { formatMessage, type Dict } from '../../lib/i18n';
+import { type Dict } from '../../lib/i18n';
 import { cn } from '../../lib/cn';
+import { MandateStats } from './MandateStats';
 import type { MissionVM } from '../MissionControl';
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -47,7 +48,6 @@ export function ActionBar({ vm }: { vm: MissionVM }) {
   });
   const showVotes = vm.boundMode !== 'days';
   const showDays = vm.boundMode !== 'votes';
-  const maxLabel = vm.boundMode === 'days' ? '∞' : String(vm.maxVotes);
 
   const enter = reduce ? {} : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 } };
 
@@ -117,12 +117,16 @@ export function ActionBar({ vm }: { vm: MissionVM }) {
             )}
           </motion.div>
         ) : (
-          <motion.div key="live" {...enter} transition={{ duration: 0.3, ease: EASE }} className="flex flex-col items-center gap-2.5">
-            <p className={cn('text-[12px] font-semibold', vm.killed ? 'text-bad' : 'text-ink-soft/90')}>
-              {vm.killed
-                ? t.severedBold
-                : formatMessage(t.standingHint, { used: String(vm.votesUsed), max: maxLabel })}
-            </p>
+          <motion.div key="live" {...enter} transition={{ duration: 0.3, ease: EASE }} className="flex flex-col items-center gap-3">
+            <MandateStats
+              boundMode={vm.boundMode}
+              maxVotes={vm.maxVotes}
+              ttlDays={vm.ttlDays}
+              votesUsed={vm.votesUsed}
+              grantedAt={vm.grantedAt}
+              killed={vm.killed}
+              t={t}
+            />
 
             <div className="flex items-center gap-3">
               <button

@@ -46,6 +46,7 @@ export interface MissionVM {
   grantedProposalId: bigint | null;
   grantRunId: string | null;
   votesUsed: number;
+  grantedAt: number | null;
   youAddr?: string;
   orchAddr?: string;
   analystAddr?: string;

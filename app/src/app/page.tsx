@@ -29,6 +29,7 @@ export default function Home() {
   const [grantedProposalId, setGrantedProposalId] = useState<bigint | null>(null);
   const [grantRunId, setGrantRunId] = useState<string | null>(null);
   const [votesUsed, setVotesUsed] = useState(0);
+  const [grantedAt, setGrantedAt] = useState<number | null>(null);
   const [maxVotes, setMaxVotes] = useState(10);
   const [ttlDays, setTtlDays] = useState(30);
   const [boundMode, setBoundMode] = useState<'votes' | 'days' | 'both'>('both');
@@ -145,6 +146,7 @@ export default function Home() {
       setRunId(id);
       setGrantRunId(id);
       setVotesUsed(1);
+      setGrantedAt(Date.now());
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -207,6 +209,7 @@ export default function Home() {
     grantedProposalId,
     grantRunId,
     votesUsed,
+    grantedAt,
     youAddr: run?.delegations.participants?.user ?? userSA?.address,
     orchAddr: run?.delegations.participants?.orchestrator ?? cfg?.orchestratorSA,
     analystAddr: run?.delegations.participants?.analyst ?? cfg?.analyst,
