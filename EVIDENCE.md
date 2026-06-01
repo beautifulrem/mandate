@@ -1,7 +1,13 @@
 # Mandate — Per-Track Evidence Map
 
 On-chain receipts proving each hackathon track. All testnet artifacts are on **Base Sepolia
-(chainId 84532)**; Basescan: `https://sepolia.basescan.org`. Started at Checkpoint A.
+(chainId 84532)**; Basescan: `https://sepolia.basescan.org`.
+
+> **Two flows, same primitives.** The interactive **app** casts a *standing, vote-only, revocable*
+> mandate on the **VoteBoard** (any proposal, bounded by votes + time). The on-chain **receipts below**
+> are from the CLI/Governor reproduction (`pnpm vote:2hop` etc.), which runs the same MetaMask Smart
+> Accounts primitives against a real OpenZeppelin `Governor` with the scope tightened to a single
+> locked `proposalId`. The 2-hop A2A re-delegation is the *mechanism* behind the mandate, not the pitch.
 
 ## Deployed (Base Sepolia)
 
@@ -19,7 +25,7 @@ On-chain receipts proving each hackathon track. All testnet artifacts are on **B
 | # | Track | Status | Proof |
 |---|---|---|---|
 | 1 | **General qualification** — SAK smart account + ERC-7710 in the main flow | ✅ | the redeem tx below casts a real vote via `@metamask/smart-accounts-kit` |
-| 2 | **Best A2A coordination** (anchor) — 2-hop attenuated redelegation, redeemed on-chain | ✅ | vote + revoke txs below; 3 participants, 2 signed delegations, leaf→root redemption |
+| 2 | Best A2A coordination — 2-hop attenuated re-delegation (the mechanism behind the mandate), redeemed on-chain | ✅ | vote + revoke txs below; 3 participants, 2 signed delegations, leaf→root redemption |
 | 3 | **Best 1Shot relayer** — mainnet castVote via 7702 upgrade + 7710 (USDC gas) | ✅ live (mainnet) | real Base-mainnet castVote relayed via 1Shot; burner 7702-upgraded; fee 0.01 USDC (see below) |
 | 4 | **Best Venice AI** — TEE model decides `support`; attestation verified | ✅ | live decisions discriminate (risky→Against, sound→For); `x-venice-tee:true`; attestation `verified:true` (see below) |
 | 5 | **x402 + ERC-7710** — a self-built seller charges per query; buyer pays via a scoped delegation | ✅ live | 402 → signed Erc20TransferAmount delegation → on-chain settle → data (`pnpm x402:demo`) |

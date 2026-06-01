@@ -7,16 +7,23 @@
 
 ## The flow
 
-1. **Grant** — your MetaMask smart account signs an ERC-7710 `createDelegation` scoped to a single
-   call: `Governor.castVote(proposalId, support)` with **proposalId locked** and **support left free**.
-2. **Redelegate** — an **Orchestrator** smart account attenuated-redelegates that right to an
-   **Analyst** (2 signed delegations, 3 participants).
-3. **Decide** — the Analyst privately analyses the proposal inside a **Venice TEE** (Intel TDX) and
-   decides For / Against / Abstain — the cast `support` provably comes from the model, not hardcoded.
+1. **Grant a standing mandate** — your MetaMask smart account signs **one** ERC-7710 delegation: an
+   AI may `castVote` on **any** proposal on this DAO board, **vote-only** (never your funds), bounded
+   by a **vote cap + validity window** you choose, revocable anytime. (Caveats: `AllowedTargets` +
+   `AllowedMethods`, plus `LimitedCalls` / `Timestamp`.)
+2. **Re-delegate (the mechanism)** — an **Orchestrator** smart account attenuated-redelegates that
+   right to an **Analyst**. This 2-hop ERC-7710 chain is what makes the mandate *attenuable* and
+   *cascade-revocable*; it is the plumbing, not the pitch.
+3. **Decide** — the Analyst privately analyses **each** proposal inside a **Venice TEE** (Intel TDX)
+   and decides For / Against / Abstain — the cast `support` provably comes from the model, not hardcoded.
 4. **Vote** — the Analyst redeems the chain leaf→root; the DelegationManager executes `castVote`
-   **as your smart account**, so your seeded voting power is what counts.
-5. **Recall** — you hit **Recall** → one `disableDelegation` on the root makes every redemption of
-   the chain revert. *Self-custody you can watch.*
+   **as your smart account**. Under the one grant the agent votes proposal after proposal, up to your cap.
+5. **Recall (the wow)** — you hit **Recall** → one `disableDelegation` on the root cascade-revokes the
+   whole chain; the next redemption reverts on-chain. *Self-custody you can watch.*
+
+> The repo also ships a CLI path (`pnpm vote:2hop`) that runs the **same** mechanism against a real
+> OpenZeppelin `Governor`, with the scope tightened further to a single **locked `proposalId`** — an
+> even narrower variant of the same delegation, kept for the on-chain Governor receipts in `EVIDENCE.md`.
 
 ## Why ERC-7710 — nothing weaker gives all four at once
 
@@ -44,24 +51,31 @@ agent to move funds and the redemption **reverts at the enforcer**, on-chain.
 
 ## Live on Base Sepolia (84532)
 
-| | address |
-|---|---|
-| VotesToken | [`0x56FC5fA996f9D0e15e40fE7D738C6cA055d1Ad55`](https://sepolia.basescan.org/address/0x56FC5fA996f9D0e15e40fE7D738C6cA055d1Ad55) |
-| MandateGovernor | [`0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5`](https://sepolia.basescan.org/address/0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5) |
+| | address | used by |
+|---|---|---|
+| **VoteBoard** (multi-proposal board) | [`0x4E0CA4E2c45a94bC5974Fab93c3F1Df55F0c3e2B`](https://sepolia.basescan.org/address/0x4E0CA4E2c45a94bC5974Fab93c3F1Df55F0c3e2B) | the **app demo** — the standing vote-only mandate casts here |
+| VotesToken (ERC20Votes) | [`0x56FC5fA996f9D0e15e40fE7D738C6cA055d1Ad55`](https://sepolia.basescan.org/address/0x56FC5fA996f9D0e15e40fE7D738C6cA055d1Ad55) | the CLI / Governor path |
+| MandateGovernor (OZ) | [`0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5`](https://sepolia.basescan.org/address/0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5) | the CLI `vote:2hop` (locked-`proposalId`) path |
 
 Per-track on-chain receipts are in **[`EVIDENCE.md`](./EVIDENCE.md)**.
 
 ## Tracks
 
+**The pitch in one line:** a *standing, vote-only, revocable* AI governance mandate — an agent votes
+any proposal on the DAO for you, **provably cannot touch your funds**, and you can **kill the whole
+delegation chain on-chain in one click**. The A2A re-delegation, Venice TEE, x402 and 1Shot below are
+the mechanism that makes that real (the novelty is the governance use case + the kill switch, not
+hop-count).
+
 | Track | Status |
 |---|---|
-| General qualification (SAK smart account + ERC-7710 in the main flow) | ✅ live |
-| **Best A2A coordination** — 2-hop attenuated redelegation + cause-proven cascade-revoke | ✅ live |
-| **Best use of Venice AI** — TEE model decides the vote; attestation verified | ✅ live |
-| **Best Agent** — autonomous analyze → decide → vote after one grant | ✅ live |
-| Kill-the-chain (the wow) — recall disables root; next redemption reverts | ✅ live |
+| General qualification — SAK smart account + ERC-7710 **standing grant** in the main flow | ✅ live |
+| **Revocable governance mandate + kill-the-chain (the core)** — Recall disables the root; the next redemption reverts on-chain | ✅ live |
+| **Best use of Venice AI** — the TEE model decides `support` per proposal; attestation verified | ✅ live |
+| **Best Agent** — one grant → autonomous analyze → decide → vote, proposal after proposal | ✅ live |
+| Best A2A coordination — 2-hop attenuated re-delegation (the mechanism behind the mandate) | ✅ live |
 | **Best 1Shot Permissionless Relayer** — mainnet `castVote` via 7702 + 7710 (USDC gas) | ✅ live on Base mainnet (fee 0.01 USDC, burner 7702-upgraded) |
-| **Best x402 + ERC-7710** — self-built seller; agent pays per-query via a scoped delegation | ✅ live (402 → 7710 settle → data) |
+| **Best x402 + ERC-7710** — self-built seller; the agent pays per-query via a scoped delegation | ✅ live (402 → 7710 settle → data) |
 
 ## Run it
 

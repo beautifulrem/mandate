@@ -16,14 +16,23 @@ moment. Everything below the UI is verified live on Base Sepolia.
 
 ## The delegation (the heart)
 
-The grant is an ERC-7710 `createDelegation` with a **FunctionCall scope**:
+The grant is an ERC-7710 `createDelegation` with a **FunctionCall scope**. The interactive app uses
+the **standing** variant; the CLI keeps an even-tighter single-proposal variant of the same scope.
 
-- `targets = [Governor]`, `selectors = ['castVote(uint256,uint8)']`
-- `allowedCalldata` locks the **proposalId** (bytes 4..35) and **leaves `support` (byte 36) free** —
-  so the agent can vote, but only on *this* proposal, and the *direction* is decided later by Venice.
+**Standing mandate (the app demo)** — vote-only on the board, bounded, revocable:
+
+- `targets = [VoteBoard]`, `selectors = ['castVote(uint256,uint8)']` → `AllowedTargets` +
+  `AllowedMethods`: the agent can ONLY `castVote` on this board — never move funds, never call anything else.
+- plus standing-authority caveats: `Timestamp` (expiry) and/or `LimitedCalls` (≤ maxVotes).
+- `proposalId` is **NOT** locked, so the one grant covers *any* current/future proposal — which is
+  exactly why being able to **revoke** it matters.
+
+**Single-proposal variant (CLI `vote:2hop`, on the real OZ `Governor`)** — same scope, tightened: adds
+`allowedCalldata` locking the **proposalId** (bytes 4..35) and leaving `support` (byte 36) free, so the
+agent votes only on *that* proposal while Venice still decides the direction.
 
 ```
-User SA ──root: castVote scope, proposalId locked──▶ Orchestrator SA
+User SA ──root: castVote scope (vote-only, bounded) · proposalId free [CLI: locked]──▶ Orchestrator SA
 Orchestrator SA ──attenuated redelegation (parentDelegation = root)──▶ Analyst EOA
 Analyst submits redeemDelegations([redelegation, root], [castVote(proposalId, support)])
    → DelegationManager validates the chain and executes castVote AS the User SA
