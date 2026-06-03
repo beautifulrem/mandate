@@ -51,6 +51,7 @@ const en = {
   notConnected: 'not connected',
   smartAccount: 'MetaMask smart account',
   connect: 'Connect MetaMask',
+  connectHint: 'Connect any wallet — your MetaMask Smart Account is auto-deployed so your agent can join the vote.',
   saHeadline: 'MetaMask Smart Account (ERC-4337 · Hybrid)',
   eoaSubline: 'signer EOA · {address}',
   eoaPill: 'EOA',
@@ -79,8 +80,11 @@ const en = {
   proposalBody:
     'Proposal: renew the core-dev team budget at 12,000 USDC/quarter, released against public monthly milestone reports via a 2-of-3 multisig, with an unspent-funds clawback. Should the DAO approve?',
   scopeVote: 'any proposal · vote-only',
+  scopeVoteOnly: 'vote-only',
   scopeFunds: "can't move funds",
   scopeRevocable: 'revocable',
+  scopeEnforced: 'on-chain enforced',
+  scopeSentence: 'An AI votes any proposal on this DAO for you — and can never touch your funds.',
 
   chainTitle: 'Live authority chain',
   scopeChip: '4 caveats',
@@ -89,7 +93,10 @@ const en = {
     you: { who: 'You', role: 'grant the permission' },
     orch: { who: 'Orchestrator', role: 'narrows the permission' },
     analyst: { who: 'Analyst', role: 'decides + casts the vote' },
+    board: { who: 'VoteBoard', role: 'on-chain tally' },
   },
+  panels: { wallet: 'Smart Account', tally: 'DAO tally', x402: 'x402 toll gate', oneshot: '1Shot relay', run: 'Run detail' },
+  capOneShot: 'mainnet relay · instant',
   thinking: 'thinking…',
   teeConsoleTitle: 'Sealed enclave · Intel TDX',
   teeFallbackReasoning:
@@ -233,6 +240,7 @@ const zh: Dict = {
   notConnected: '未连接',
   smartAccount: 'MetaMask 智能账户',
   connect: '连接 MetaMask',
+  connectHint: '连接任意钱包——会自动为你部署 MetaMask 智能账户,让你的代理加入投票。',
   saHeadline: 'MetaMask 智能账户 (ERC-4337 · Hybrid)',
   eoaSubline: '签名 EOA · {address}',
   eoaPill: 'EOA',
@@ -261,8 +269,11 @@ const zh: Dict = {
   proposalBody:
     '提案:将核心开发团队预算按每季度 12,000 USDC 续期,凭每月公开的里程碑报告、经 2/3 多签放款,并对未用资金设追回条款。DAO 是否批准?',
   scopeVote: '任意提案 · 仅投票',
+  scopeVoteOnly: '仅投票',
   scopeFunds: '不能动用资金',
   scopeRevocable: '可撤销',
+  scopeEnforced: '由链上强制',
+  scopeSentence: 'AI 替你投这个 DAO 的任意提案 —— 且永不动用你的资金。',
 
   chainTitle: '实时授权链',
   scopeChip: '4 条 caveat',
@@ -271,7 +282,10 @@ const zh: Dict = {
     you: { who: '你', role: '授予权限' },
     orch: { who: '编排器', role: '收窄权限' },
     analyst: { who: '分析员', role: '决策并投票' },
+    board: { who: 'VoteBoard', role: '链上计票' },
   },
+  panels: { wallet: '智能账户', tally: 'DAO 计票', x402: 'x402 收费门', oneshot: '1Shot 中继', run: '运行详情' },
+  capOneShot: '主网中继 · 即时',
   thinking: '思考中…',
   teeConsoleTitle: '密封飞地 · Intel TDX',
   teeFallbackReasoning:

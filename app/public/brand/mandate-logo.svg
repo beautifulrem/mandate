@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="48" viewBox="0 0 200 48" fill="none">
+  
+  <rect x="0" y="6" width="36" height="36" rx="11" fill="#f6851b" fill-opacity="0.10" stroke="#f6851b" stroke-opacity="0.30"></rect>
+  <g transform="translate(8,14)" stroke="#f6851b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" transform="scale(0.83)"></path>
+    <path d="m9 12 2 2 4-4" transform="scale(0.83)"></path>
+  </g>
+  <text x="50" y="31" font-family="&#39;Space Grotesk&#39;, sans-serif" font-size="20" font-weight="700" letter-spacing="-0.01em" fill="#e6e9ef">Mandate</text>
+</svg>

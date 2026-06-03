@@ -1,23 +1,25 @@
 'use client';
 
-import { useEffect, useState, type RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import type { Address } from 'viem';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { ShieldCheck } from 'lucide-react';
-import type { DaoProposal, Delegation, RunStatus } from '@mandate/shared';
+import { Activity, Coins, Rocket, Vote, Wallet } from 'lucide-react';
+import { VOTE_BOARD_ADDRESS, type DaoProposal, type Delegation, type RunStatus } from '@mandate/shared';
 import type { DemoConfig } from '../lib/orchestrator';
 import type { SmartAccount } from '../lib/wallet';
 import type { Dict, Lang } from '../lib/i18n';
-import { LangToggle } from './LangToggle';
-import { StatusDot } from './ui/Badge';
-import { GraphStage } from './graph/GraphStage';
-import { ProposalDock } from './proposal/ProposalDock';
-import { ActionBar } from './panels/ActionBar';
+import { reached } from '../lib/runState';
 import { ErrorToast } from './panels/ErrorToast';
 import { type VoteRecord } from './panels/VoteLog';
-import { TrackRail } from './layout/TrackRail';
-import { LeftSidebar } from './layout/LeftSidebar';
-import { RightSidebar } from './layout/RightSidebar';
+import { NetworkField } from './mission/NetworkField';
+import { TopBar } from './mission/TopBar';
+import { IconRail, type PanelKey, type RailItem } from './mission/IconRail';
+import { Popover } from './mission/Popover';
+import { ProposalHUD } from './mission/ProposalHUD';
+import { AuthorityChain } from './mission/AuthorityChain';
+import { TeeConsole } from './mission/TeeConsole';
+import { ScopeBlock } from './mission/ScopeBlock';
+import { CapabilityDock } from './mission/CapabilityDock';
+import { PopoverBody } from './mission/popovers';
 
 /**
  * The view-model the orchestrator (page.tsx) hands to the single-screen cockpit. It carries the
@@ -79,69 +81,88 @@ export interface MissionVM {
   onRecall: () => void;
 }
 
+const RAIL_TOP = 84;
+const RAIL_STEP = 50;
+
 /**
- * The cockpit: a persistent TopBar over a 3-pane layout — a collapsible grant-side sidebar, the
- * living React Flow permission graph in the center (with the proposal / actions / track HUD floating
- * over it), and a collapsible execution-side sidebar whose dossier is organized into tabs. Each
- * sidebar animates (Gemini-style) between a full panel and a narrow icon rail; collapse both and the
- * graph goes full-bleed immersive. The graph re-fits via its ResizeObserver as the sidebars animate.
+ * The immersive Mission-Control cockpit: a full-viewport canvas (drifting aurora + an ambient
+ * network field + a central spotlight) with everything orbiting one focal column — the live
+ * proposal HUD, the You→Orchestrator→Analyst→VoteBoard authority graph, the Venice-TEE reasoning
+ * console, the scope/grant controls, and the x402 + 1Shot capability dock. A single right icon rail
+ * opens content-height popover "bubbles" (Smart Account · DAO tally · x402 · 1Shot · Run) that float
+ * over the canvas without squeezing the focal column. No desktop page scroll.
  */
 export function MissionControl({ vm }: { vm: MissionVM }) {
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [panel, setPanel] = useState<PanelKey | null>(null);
+  const { t } = vm;
 
-  // Phones / tablets: start collapsed so the graph isn't crushed (the user can open the sidebars).
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      setLeftCollapsed(true);
-      setRightCollapsed(true);
-    }
-  }, []);
+  const runActive = !!vm.venice || !!vm.run;
+  const granted = !!vm.grantRunId;
+
+  const rail: RailItem[] = [
+    { key: 'wallet', icon: Wallet, title: t.panels.wallet },
+    { key: 'tally', icon: Vote, title: t.panels.tally },
+    { key: 'x402', icon: Coins, title: t.panels.x402 },
+    { key: 'oneshot', icon: Rocket, title: t.panels.oneshot },
+    { key: 'run', icon: Activity, title: t.panels.run, dot: runActive },
+  ];
+
+  const idx = panel ? rail.findIndex((r) => r.key === panel) : -1;
+  const anchorTop = RAIL_TOP + (idx < 0 ? 0 : idx) * RAIL_STEP;
+  const activeItem = rail.find((r) => r.key === panel);
+
+  const seed = vm.activeProposal.seed;
+  const pips = {
+    for_: seed.filter((x) => x === 1).length,
+    against: seed.filter((x) => x === 0).length,
+    abstain: seed.filter((x) => x === 2).length,
+  };
+
+  const toggle = (key: PanelKey) => setPanel((c) => (c === key ? null : key));
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden">
-      {/* TopBar — persistent, full width */}
-      <header className="relative z-[5] flex shrink-0 items-center justify-between gap-3 px-6 py-3.5">
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-9 place-items-center rounded-xl border border-brand/30 bg-brand/10 text-brand shadow-[0_0_24px_-8px_var(--color-brand)]">
-            <ShieldCheck className="size-5" strokeWidth={2} />
-          </span>
-          <span className="font-display text-lg font-bold tracking-tight text-ink">Mandate</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <LangToggle lang={vm.lang} onToggle={vm.toggleLang} />
-          <span className="inline-flex items-center gap-2 rounded-chip border border-hairline bg-surface/40 px-3 py-1.5 text-xs font-semibold text-ink-soft backdrop-blur">
-            <StatusDot tone="ok" /> Base Sepolia
-          </span>
-          <ConnectButton showBalance={false} accountStatus="address" chainStatus="icon" />
-        </div>
-      </header>
+    <div className="mc-root">
+      <NetworkField />
+      <div className="mc-spotlight" aria-hidden="true" />
 
-      <div className="flex min-h-0 flex-1">
-        <LeftSidebar vm={vm} collapsed={leftCollapsed} onToggle={() => setLeftCollapsed((c) => !c)} />
+      <TopBar lang={vm.lang} toggleLang={vm.toggleLang} t={t} />
+      <IconRail items={rail} active={panel} onSelect={toggle} />
 
-        {/* center — the living permission graph + the proposal / actions / track HUD over it */}
-        <div className="relative min-w-0 flex-1 overflow-hidden">
-          <div ref={vm.graphStageRef} className="absolute inset-0">
-            <GraphStage vm={vm} />
-          </div>
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-base/85 to-transparent" aria-hidden />
-          <ProposalDock
-            proposal={vm.activeProposal}
-            activeIdx={vm.activeIdx}
-            count={vm.proposalCount}
-            onSelect={vm.setActiveIdx}
-            lang={vm.lang}
-            t={vm.t}
+      <main className="mc-center hud-scroll">
+        <ProposalHUD
+          proposal={vm.activeProposal}
+          activeIdx={vm.activeIdx}
+          count={vm.proposalCount}
+          onSelect={vm.setActiveIdx}
+          lang={vm.lang}
+          t={t}
+        />
+
+        <div ref={vm.graphStageRef} className="flex w-full justify-center">
+          <AuthorityChain
+            t={t}
+            parties={{ you: vm.youAddr, orch: vm.orchAddr, analyst: vm.analystAddr, board: VOTE_BOARD_ADDRESS }}
+            reached={(target) => reached(vm.s, target)}
+            status={vm.s}
+            killed={vm.killed}
+            cutting={vm.recalling}
+            connected={vm.isConnected}
+            pips={pips}
           />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-base/90 to-transparent" aria-hidden />
-          <ActionBar vm={vm} />
-          <TrackRail vm={vm} />
-          <ErrorToast error={vm.error} />
         </div>
 
-        <RightSidebar vm={vm} collapsed={rightCollapsed} onToggle={() => setRightCollapsed((c) => !c)} />
-      </div>
+        <TeeConsole venice={vm.venice} status={vm.s} killed={vm.killed} t={t} />
+
+        <ScopeBlock vm={vm} />
+
+        <CapabilityDock t={t} onOpen={setPanel} granted={granted} />
+      </main>
+
+      <Popover side="right" open={!!panel} anchorTop={anchorTop} title={panel ? t.panels[panel] : ''} icon={activeItem?.icon} onClose={() => setPanel(null)}>
+        {panel && <PopoverBody panel={panel} vm={vm} />}
+      </Popover>
+
+      <ErrorToast error={vm.error} />
     </div>
   );
 }
