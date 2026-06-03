@@ -9,6 +9,12 @@ import type { Dict } from '../../lib/i18n';
 type Pips = { for_: number; against: number; abstain: number };
 type DivRef = RefObject<HTMLDivElement | null>;
 
+// How long each reveal stage holds (ms). Deliberately slow (~1.5s) so the permission visibly flows
+// You → Orchestrator → Analyst → VoteBoard one segment at a time and the segments feel time-balanced,
+// even when the real run is faster. The ratchet never runs ahead of the real status, so the analyst
+// step still waits out the genuine Venice decision time.
+const STAGE_MS = 1500;
+
 interface ChainNodeProps {
   nodeRef: DivRef;
   icon: LucideIcon;
@@ -334,8 +340,9 @@ export function AuthorityChain({
   for (let i = 0; i < ORDER.length; i++) if (reached(ORDER[i])) targetIdx = i;
 
   // Reveal the chain left-to-right one stage at a time: ratchet a *displayed* index up toward the
-  // real one (never ahead). Polling can jump the run status several stages at once — without this
-  // the beams + scope token would light all at once instead of flowing in sequence.
+  // real one (never ahead), holding STAGE_MS per stage. Polling can jump the run status several
+  // stages at once — without this the beams + scope token would light all at once; with the hold,
+  // each segment gets its ~1.5s and 'analyzing' still waits out the real Venice decision.
   const [shownIdx, setShownIdx] = useState(-1);
   useEffect(() => {
     if (killed) {
@@ -347,7 +354,7 @@ export function AuthorityChain({
       setShownIdx(targetIdx); // a fresh run reset us behind — snap back, then re-reveal
       return;
     }
-    const id = setTimeout(() => setShownIdx((v) => v + 1), 700);
+    const id = setTimeout(() => setShownIdx((v) => v + 1), STAGE_MS);
     return () => clearTimeout(id);
   }, [shownIdx, targetIdx, killed]);
 
