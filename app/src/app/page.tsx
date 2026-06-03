@@ -44,6 +44,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const graphStageRef = useRef<HTMLDivElement>(null);
+  // Bumped on every disconnect/account-switch reset; async actions capture it at start and drop their
+  // late writes if it changed mid-flight, so a vote/recall settling after disconnect can't re-light.
+  const session = useRef(0);
 
   const t = getDict(lang);
   const activeProposal = PROPOSALS[activeIdx];
@@ -91,11 +94,39 @@ export default function Home() {
     };
   }, [walletClient]);
 
+  // Wipe the previous session's run-flow state when the wallet disconnects (or switches accounts), so
+  // the cockpit drops back to its pristine, never-connected look — nothing left lit from the old run.
+  // Guarded on the previous address: the initial undefined→connect must NOT clear a fresh grant (so a
+  // hydration flicker can't wipe it either); we reset only when LEAVING a real account — → undefined on
+  // disconnect, or A→B on switch. userSA is already cleared by the walletClient effect above.
+  const prevAddress = useRef<typeof address>(undefined);
+  useEffect(() => {
+    const prev = prevAddress.current;
+    if (prev === address) return;
+    prevAddress.current = address;
+    if (prev === undefined) return; // first connect — there's nothing from a prior session to clear
+    session.current += 1; // invalidate any in-flight grant/vote/recall so its late write is dropped
+    setRunId(null);
+    setRun(null);
+    setRootDel(null);
+    setGrantedProposalId(null);
+    setGrantRunId(null);
+    setVotesUsed(0);
+    setGrantedAt(null);
+    setVoteLog([]);
+    setRecallTx(null);
+    setError(null);
+    setBusy(false);
+    setRecalling(false);
+  }, [address]);
+
   useEffect(() => {
     if (!runId) return;
+    let cancelled = false; // a fresh runId / disconnect must drop a late poll, not re-light the cockpit
     const tick = async () => {
       try {
         const r = await getRun(runId);
+        if (cancelled) return;
         setRun(r);
         if (r.status === 'voted' && r.vote) {
           const txHash = r.vote.txHash;
@@ -126,6 +157,7 @@ export default function Home() {
     void tick();
     timer.current = setInterval(tick, 2000);
     return () => {
+      cancelled = true;
       if (timer.current) clearInterval(timer.current);
     };
   }, [runId]);
@@ -164,6 +196,7 @@ export default function Home() {
 
   async function onGrant() {
     if (!cfg || !userSA || !address) return;
+    const mine = session.current;
     setBusy(true);
     setError(null);
     setRecallTx(null);
@@ -183,18 +216,19 @@ export default function Home() {
         ttlDays: boundMode === 'votes' ? undefined : ttlDays,
         policy,
       });
+      const { runId: id } = await postGrant(grant);
+      if (session.current !== mine) return; // wallet disconnected/switched mid-grant — abandon this run
       setRootDel(grant.rootDelegation);
       setGrantedProposalId(activeProposal.id);
-      const { runId: id } = await postGrant(grant);
       setRun(null);
       setRunId(id);
       setGrantRunId(id);
       setVotesUsed(1);
       setGrantedAt(Date.now());
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (session.current === mine) setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      if (session.current === mine) setBusy(false);
     }
   }
 
@@ -202,31 +236,35 @@ export default function Home() {
   // signature. Succeeds while the grant is live; reverts on-chain once revoked / exhausted / expired.
   async function onVoteActive() {
     if (!grantRunId || busy) return;
+    const mine = session.current;
     setBusy(true);
     setError(null);
     try {
       const { runId: id } = await voteAgain(grantRunId, activeProposal.id.toString(), withVotingPolicy(activeProposal.body.en, policy));
+      if (session.current !== mine) return; // wallet left mid-vote — don't re-light a wiped cockpit
       setRun(null);
       setRunId(id);
       setVotesUsed((v) => v + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (session.current === mine) setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      if (session.current === mine) setBusy(false);
     }
   }
 
   async function onRecall() {
     if (!userSA || !rootDel) return;
+    const mine = session.current;
     setRecalling(true);
     setError(null);
     try {
       const { txHash } = await recall(userSA, rootDel);
+      if (session.current !== mine) return; // disconnected mid-recall — don't resurrect a wiped cockpit
       setRecallTx(txHash);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (session.current === mine) setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setRecalling(false);
+      if (session.current === mine) setRecalling(false);
     }
   }
 
