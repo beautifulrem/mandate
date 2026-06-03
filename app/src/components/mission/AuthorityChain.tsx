@@ -4,18 +4,15 @@ import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 
 import { Bot, Boxes, ExternalLink, Lock, ScanSearch, Scissors, User, type LucideIcon } from 'lucide-react';
 import { BASESCAN, shortHex } from '../../lib/config';
 import { ORDER } from '../../lib/runState';
+import { useRatchet } from '../../lib/useRatchet';
 import type { Dict } from '../../lib/i18n';
 
 type Pips = { for_: number; against: number; abstain: number };
 type DivRef = RefObject<HTMLDivElement | null>;
 
-// How long each reveal stage holds (ms). Deliberately slow (~1.5s) so the permission visibly flows
-// You → Orchestrator → Analyst → VoteBoard one segment at a time and the segments feel time-balanced,
-// even when the real run is faster. The ratchet never runs ahead of the real status, so the analyst
-// step still waits out the genuine Venice decision time.
-const STAGE_MS = 1500;
 // Packet-travel time: a node turns ON this long after its incoming beam goes live, so the light
 // visibly crosses the wire first and *then* the Orchestrator / Analyst lights up. Matches beamTravel.
+// (The per-stage hold lives in the cockpit now — it drives the chain AND the TEE console together.)
 const PACKET_MS = 850;
 
 interface ChainNodeProps {
@@ -314,7 +311,7 @@ export interface ChainParties {
 export function AuthorityChain({
   t,
   parties,
-  reached,
+  shownIdx,
   status,
   killed,
   cutting,
@@ -323,7 +320,7 @@ export function AuthorityChain({
 }: {
   t: Dict;
   parties: ChainParties;
-  reached: (target: string) => boolean;
+  shownIdx: number; // staged reveal index, driven by the cockpit (shared with the TEE console)
   status?: string;
   killed: boolean;
   cutting: boolean;
@@ -338,45 +335,10 @@ export function AuthorityChain({
   const s = status;
   const live = !!s && !['', 'idle'].includes(s);
 
-  // How far the real run has progressed (treats 'revoked' as past every stage).
-  let targetIdx = -1;
-  for (let i = 0; i < ORDER.length; i++) if (reached(ORDER[i])) targetIdx = i;
-
-  // Reveal the chain left-to-right one stage at a time: ratchet a *displayed* index up toward the
-  // real one (never ahead), holding STAGE_MS per stage. Polling can jump the run status several
-  // stages at once — without this the beams + scope token would light all at once; with the hold,
-  // each segment gets its ~1.5s and 'analyzing' still waits out the real Venice decision.
-  const [shownIdx, setShownIdx] = useState(-1);
-  useEffect(() => {
-    if (killed) {
-      if (shownIdx !== targetIdx) setShownIdx(targetIdx);
-      return;
-    }
-    if (shownIdx === targetIdx) return;
-    if (shownIdx > targetIdx) {
-      setShownIdx(targetIdx); // a fresh run reset us behind — snap back, then re-reveal
-      return;
-    }
-    const id = setTimeout(() => setShownIdx((v) => v + 1), STAGE_MS);
-    return () => clearTimeout(id);
-  }, [shownIdx, targetIdx, killed]);
-
-  // A second, lagging index: a node only lights AFTER its incoming packet has travelled to it, so
-  // the light flows across the wire first, then the Orchestrator / Analyst turns on (PACKET_MS behind).
-  const [litIdx, setLitIdx] = useState(-1);
-  useEffect(() => {
-    if (killed) {
-      if (litIdx !== targetIdx) setLitIdx(targetIdx);
-      return;
-    }
-    if (litIdx === shownIdx) return;
-    if (litIdx > shownIdx) {
-      setLitIdx(shownIdx);
-      return;
-    }
-    const id = setTimeout(() => setLitIdx((v) => v + 1), PACKET_MS);
-    return () => clearTimeout(id);
-  }, [litIdx, shownIdx, killed]);
+  // `shownIdx` (the staged reveal index) arrives from the cockpit, so the chain and the TEE console
+  // advance off the SAME beat. Beams + the scope token use it directly; nodes light one packet-travel
+  // later — `litIdx` ratchets toward shownIdx so a node only turns on once its packet has arrived.
+  const litIdx = useRatchet(shownIdx, PACKET_MS, killed);
 
   const idxOf = (target: string) => (ORDER as readonly string[]).indexOf(target);
   const beamLive = (target: string) => shownIdx >= idxOf(target); // packet travels the wire

@@ -7,7 +7,8 @@ import { VOTE_BOARD_ADDRESS, type DaoProposal, type Delegation, type RunStatus }
 import type { DemoConfig } from '../lib/orchestrator';
 import type { SmartAccount } from '../lib/wallet';
 import type { Dict, Lang } from '../lib/i18n';
-import { reached } from '../lib/runState';
+import { ORDER, reached } from '../lib/runState';
+import { useRatchet } from '../lib/useRatchet';
 import { decisionToSupport, useLiveTally, withOptimisticVote } from '../lib/useLiveTally';
 import { ErrorToast } from './panels/ErrorToast';
 import { type VoteRecord } from './panels/VoteLog';
@@ -84,6 +85,11 @@ export interface MissionVM {
 
 const RAIL_TOP = 84;
 const RAIL_STEP = 50;
+// How long each reveal stage holds (ms). Deliberately slow (~1.5s) so the permission visibly flows
+// You → Orchestrator → Analyst → VoteBoard one segment at a time and the segments feel time-balanced,
+// even when the real run is faster. Drives the chain AND the TEE console (lockstep); never runs ahead
+// of the real status, so 'analyzing' still waits out the genuine Venice decision.
+const STAGE_MS = 1500;
 
 /**
  * The immersive Mission-Control cockpit: a full-viewport canvas (drifting aurora + an ambient
@@ -124,6 +130,13 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
   );
   const pips = { for_: tally.for_, against: tally.against, abstain: tally.abstain };
 
+  // ONE staged reveal index drives both the authority chain and the center TEE console, so the
+  // console appears/decides on the chain's beat instead of the raw backend speed. targetIdx = how far
+  // the real run has progressed; revealIdx ratchets toward it at STAGE_MS per stage (never ahead).
+  let targetIdx = -1;
+  for (let i = 0; i < ORDER.length; i++) if (reached(vm.s, ORDER[i])) targetIdx = i;
+  const revealIdx = useRatchet(targetIdx, STAGE_MS, vm.killed);
+
   const toggle = (key: PanelKey) => setPanel((c) => (c === key ? null : key));
 
   return (
@@ -149,7 +162,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
           <AuthorityChain
             t={t}
             parties={{ you: vm.youAddr, orch: vm.orchAddr, analyst: vm.analystAddr, board: VOTE_BOARD_ADDRESS }}
-            reached={(target) => reached(vm.s, target)}
+            shownIdx={revealIdx}
             status={vm.s}
             killed={vm.killed}
             cutting={vm.recalling}
@@ -158,7 +171,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
           />
         </div>
 
-        <TeeConsole venice={vm.venice} status={vm.s} killed={vm.killed} t={t} />
+        <TeeConsole venice={vm.venice} status={vm.s} stageIdx={revealIdx} killed={vm.killed} t={t} />
 
         <ScopeBlock vm={vm} />
 

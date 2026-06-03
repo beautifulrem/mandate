@@ -3,6 +3,7 @@
 import type { RunStatus } from '@mandate/shared';
 import { BadgeCheck, FileSignature, Lock, Sparkles } from 'lucide-react';
 import { shortHex } from '../../lib/config';
+import { ORDER } from '../../lib/runState';
 import type { Dict } from '../../lib/i18n';
 import { Badge } from '../ui/Badge';
 import { decisionColor, TeeCursor, useTeeStream } from './teeStream';
@@ -16,17 +17,22 @@ import { decisionColor, TeeCursor, useTeeStream } from './teeStream';
 export function TeeConsole({
   venice,
   status,
+  stageIdx,
   killed,
   t,
 }: {
   venice: RunStatus['venice'];
   status?: string;
+  stageIdx?: number; // when set (center console), gate on the chain's staged reveal, not raw status
   killed: boolean;
   t: Dict;
 }) {
-  const analyzing = status === 'analyzing';
-  const decided = ['decided', 'voting', 'voted'].includes(status ?? '');
-  const active = analyzing || decided;
+  // Center console (stageIdx set) follows the chain's staged reveal, so it appears + crystallizes the
+  // verdict on the chain's beat; the run-popover console (no stageIdx) tracks the real run status.
+  const aIdx = ORDER.indexOf('analyzing');
+  const dIdx = ORDER.indexOf('decided');
+  const decided = stageIdx !== undefined ? stageIdx >= dIdx : ['decided', 'voting', 'voted'].includes(status ?? '');
+  const active = stageIdx !== undefined ? stageIdx >= aIdx : decided || status === 'analyzing';
   const full = (venice?.reasoning && venice.reasoning.trim()) || t.teeFallbackReasoning;
   const model = venice?.model ?? 'venice/llama-3.3-70b';
   // Always type token-by-token while active; the verdict crystallizes once the stream completes.
