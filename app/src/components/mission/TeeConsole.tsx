@@ -31,6 +31,9 @@ export function TeeConsole({
   const model = venice?.model ?? 'venice/llama-3.3-70b';
   // Always type token-by-token while active; the verdict crystallizes once the stream completes.
   const { text, typing } = useTeeStream(full, !active || killed ? 'off' : 'type');
+  // Once the reasoning finishes, the rationale types out too (the verdict's own little reveal).
+  const ratPlay = !active || killed || !decided || !venice || typing ? 'off' : 'type';
+  const { text: ratText, typing: ratTyping } = useTeeStream(venice?.rationale ?? '', ratPlay);
 
   if (!active || killed) return null;
   const showVerdict = decided && !!venice && !typing;
@@ -63,10 +66,10 @@ export function TeeConsole({
 
           {showVerdict && venice && (
             <div className="tee-verdict">
-              <code className="mt-3 block break-all rounded-md border border-hairline bg-surface-2 px-2.5 py-[7px] font-mono text-[11.5px] text-ink-mute">
+              <code className="tee-v-json mt-3 block break-all rounded-md border border-hairline bg-surface-2 px-2.5 py-[7px] font-mono text-[11.5px] text-ink-mute">
                 {`{"decision":"${venice.decision}","rationale":"…"}`}
               </code>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="tee-v-row mt-3 flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-mute">{t.aiDecided}</span>
                 <span
                   className="tee-verdict-badge inline-flex items-center rounded-chip px-3 py-1 text-[13px] font-bold"
@@ -85,7 +88,12 @@ export function TeeConsole({
                   </Badge>
                 )}
               </div>
-              {venice.rationale && <div className="mt-2.5 text-[13px] italic text-ink-soft">“{venice.rationale}”</div>}
+              {venice.rationale && (
+                <div className="tee-v-rat mt-2.5 text-[13px] italic text-ink-soft">
+                  “{ratText}
+                  {ratTyping && <TeeCursor />}”
+                </div>
+              )}
             </div>
           )}
         </div>

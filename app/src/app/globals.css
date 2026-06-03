@@ -370,8 +370,11 @@ html, body { height: 100%; overflow: hidden; }
   background: linear-gradient(180deg, transparent, rgba(56, 224, 255, 0.22) 46%, rgba(246, 133, 27, 0.1) 54%, transparent);
   animation: teeSweep 0.85s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both; }
 .tee-boot { animation: teeDecrypt 0.5s 0.14s var(--ease-fluid) both; }
-.tee-verdict { animation: teeDecrypt 0.34s var(--ease-fluid) both; }
-.tee-verdict-badge { animation: teeGlitch 0.34s steps(1, end) both; }
+/* verdict crystallizes in sequence: JSON line → decision row (badge glitches) → rationale */
+.tee-v-json { animation: teeDecrypt 0.3s var(--ease-fluid) both; }
+.tee-v-row { animation: teeDecrypt 0.3s 0.14s var(--ease-fluid) both; }
+.tee-v-rat { animation: teeDecrypt 0.3s 0.26s var(--ease-fluid) both; }
+.tee-verdict-badge { animation: teeGlitch 0.4s 0.16s steps(1, end) both; }
 .tee-cursor { display: inline-block; width: 7px; height: 1em; margin-left: 2px; transform: translateY(2px); border-radius: 1px;
   background: var(--color-cyan); box-shadow: 0 0 10px rgba(56, 224, 255, 0.4); animation: teeBlink 0.98s steps(1, end) infinite; }
 
@@ -419,7 +422,7 @@ html, body { height: 100%; overflow: hidden; }
 @keyframes teeBlink { 0%, 45% { opacity: 1; } 46%, 100% { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .tee-console, .tee-boot, .tee-verdict, .tee-verdict-badge, .tee-cursor { animation: none; }
+  .tee-console, .tee-boot, .tee-v-json, .tee-v-row, .tee-v-rat, .tee-verdict-badge, .tee-cursor { animation: none; }
   .tee-sweep { display: none; }
 }
 

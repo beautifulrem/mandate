@@ -198,8 +198,28 @@ export async function analyzeProposal(cfg: VeniceConfig, proposalText: string): 
   };
   const message = json.choices?.[0]?.message;
   const content = message?.content || message?.reasoning_content || '';
-  const reasoning = (message?.reasoning_content ?? '').trim().slice(0, 360) || undefined;
+  const reasoning = capExcerpt((message?.reasoning_content ?? '').trim(), 600) || undefined;
   return { decision: parseDecision(content), model, tee, usage: json.usage, reasoning };
+}
+
+/**
+ * Cap the surfaced reasoning to a readable excerpt for the UI's TEE stream — but cut on a sentence
+ * (else word) boundary and add an ellipsis instead of slicing mid-word, so it reads as a deliberate
+ * excerpt rather than a glitch. (The full reasoning_content can be very long; the decision/rationale
+ * are parsed separately and stay complete.)
+ */
+export function capExcerpt(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const floor = Math.floor(max * 0.6);
+  const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('。'), cut.lastIndexOf('! '), cut.lastIndexOf('? '), cut.lastIndexOf('… '));
+  let end = max;
+  if (stop >= floor) end = stop + 1;
+  else {
+    const space = cut.lastIndexOf(' ');
+    if (space >= floor) end = space;
+  }
+  return cut.slice(0, end).trimEnd() + '…';
 }
 
 /**
