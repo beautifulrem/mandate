@@ -61,13 +61,14 @@ export function VoteResultBanner({
       </motion.div>
       {userSAAddress && (
         <div className="rounded-xl border border-ok/25 bg-ok/8 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-soft">
-            <span>{formatMessage(t.executedBanner, { address: shortHex(userSAAddress, 6) })}</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-soft">
+            <span className="min-w-0 break-words">{formatMessage(t.executedBanner, { address: shortHex(userSAAddress, 6) })}</span>
             <a className="font-mono text-info hover:underline" href={`${BASESCAN}/tx/${run.vote.txHash}`} target="_blank" rel="noreferrer">
               {t.viewTx} ↗
             </a>
           </div>
-          <div className="mt-1.5 text-[11px] text-ink-mute">{t.executedSubtext}</div>
+          <div className="mt-1.5 text-[11px] leading-relaxed text-ink-mute">{t.executedSubtext}</div>
+          <div className="mt-1.5 break-all font-mono text-[10.5px] text-ink-mute/70">{t.executedMethod}</div>
         </div>
       )}
     </div>

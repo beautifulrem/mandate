@@ -5,7 +5,6 @@ import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { CheckCircle2, Minus, Plus, Scissors, ShieldCheck, Vote, Zap } from 'lucide-react';
 import { grantDisabled, voteActiveDisabled } from '../../lib/flow';
 import { VOTE_PRESETS } from '../../lib/presets';
-import { formatMessage } from '../../lib/i18n';
 import { MandateStats } from '../panels/MandateStats';
 import { Badge } from '../ui/Badge';
 import type { MissionVM } from '../MissionControl';
@@ -37,13 +36,10 @@ export function ScopeBlock({ vm }: { vm: MissionVM }) {
 
   const grantOff = grantDisabled({ busy: vm.busy, hasConfig: !!vm.cfg, connected: vm.isConnected, status: vm.s, killed });
   const voteOff = voteActiveDisabled({ hasGrant: granted, busy: vm.busy, running: vm.running, killed });
-  const maxLabel = vm.boundMode === 'days' ? '∞' : String(vm.maxVotes);
 
-  const sentence = killed
-    ? null
-    : granted
-      ? formatMessage(t.standingHint, { used: String(vm.votesUsed), max: maxLabel })
-      : t.scopeSentence;
+  // Only the pre-grant scope sentence. Once granted, the MandateStats readout + the on-chain chips
+  // already say everything; the old "n/10 votes used · revocable" line just repeated them.
+  const sentence = !granted && !killed ? t.scopeSentence : null;
 
   return (
     <div className="flex w-full max-w-[720px] flex-col items-center gap-3.5">

@@ -71,8 +71,9 @@ const en = {
   tamperProbePass: '✓ would pass',
   tamperProbeRevert: '✗ reverts · {enforcer}',
   tamperProbeFallback: 'cached fallback',
-  executedBanner: 'Executed AS your Smart Account {address} — DelegationManager.redeemDelegations(leaf→root)',
-  executedSubtext: 'on-chain voter == your smart account, not the analyst EOA',
+  executedBanner: 'Cast as your Smart Account {address}',
+  executedSubtext: 'The on-chain voter is you, not the AI — the agent just pressed the button on your behalf.',
+  executedMethod: 'via DelegationManager.redeemDelegations(leaf→root)',
   viewTx: 'view tx',
 
   proposalTitle: 'The proposal being voted on',
@@ -286,8 +287,9 @@ const zh: Dict = {
   tamperProbePass: '✓ 会通过',
   tamperProbeRevert: '✗ 回滚 · {enforcer}',
   tamperProbeFallback: '缓存回退',
-  executedBanner: '以你的智能账户 {address} 执行 — DelegationManager.redeemDelegations(leaf→root)',
-  executedSubtext: '链上 voter == 你的智能账户,不是分析员 EOA',
+  executedBanner: '这一票以你的智能账户 {address} 的名义投出',
+  executedSubtext: '链上记录的投票人是你,不是 AI —— 代理只是替你按下了这一步。',
+  executedMethod: '经 DelegationManager.redeemDelegations(leaf→root)',
   viewTx: '查看交易',
 
   proposalTitle: '正在投票的提案',
