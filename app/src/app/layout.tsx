@@ -1,23 +1,37 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import localFont from 'next/font/local';
 import { Providers } from './providers';
 import './globals.css';
 
-// Web3 type system: Inter (body), Space Grotesk (display/headings), JetBrains Mono
-// (addresses, hashes, numbers — tabular figures). Self-hosted via next/font (no CLS,
-// no external request). Non-latin (中文) falls back to the system CJK stack per-glyph.
+// Body type: Inter (latin), self-hosted via next/font (no CLS, no external request).
 const sans = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-const display = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-space', display: 'swap' });
-const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-jetbrains', display: 'swap' });
 
-// Brand display + mono faces (Mission-Control "techy" character): F1.8 drives headings, KPIs and
-// node names; LG1052 sets every address / hash / number; LG1056 is a heavy display-accent alt.
-// Self-hosted .otf — only a Regular master exists, so 400–700 maps to it (bold is synthesized).
-// Space Grotesk / JetBrains Mono stay wired in @theme as the fallback, and CJK falls back per-glyph.
-const brandDisplay = localFont({ src: './fonts/F1.8.otf', variable: '--font-f18', weight: '400 700', display: 'swap' });
-const brandMono = localFont({ src: './fonts/lg1052.otf', variable: '--font-lg1052', weight: '400 700', display: 'swap' });
-const brandDisplayAlt = localFont({ src: './fonts/lg1056.otf', variable: '--font-lg1056', weight: '400 700', display: 'swap' });
+// Maple Mono — the brand display + mono face: a rounded monospace that gives the Mission-Control
+// HUD its terminal character (headings, KPIs, node names, and every address / hash / number).
+// Latin weights are self-hosted as woff2 (~76KB each). 中文 is covered by Maple Mono CN, SUBSET to
+// the ~470 glyphs this app actually ships (so it stays ~100KB instead of ~18MB) and renders
+// cohesively instead of falling back to a system CJK face. The Nerd-Font icon glyphs are omitted —
+// the app draws every icon with lucide-react. CN is preload:false (non-latin best practice).
+const maple = localFont({
+  variable: '--font-maple',
+  display: 'swap',
+  src: [
+    { path: './fonts/maple/MapleMono-Regular.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/maple/MapleMono-Medium.woff2', weight: '500', style: 'normal' },
+    { path: './fonts/maple/MapleMono-SemiBold.woff2', weight: '600', style: 'normal' },
+    { path: './fonts/maple/MapleMono-Bold.woff2', weight: '700', style: 'normal' },
+  ],
+});
+const mapleCN = localFont({
+  variable: '--font-maple-cn',
+  display: 'swap',
+  preload: false,
+  src: [
+    { path: './fonts/maple/MapleMonoCN-Regular.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/maple/MapleMonoCN-Bold.woff2', weight: '700', style: 'normal' },
+  ],
+});
 
 export const metadata: Metadata = {
   title: 'Mandate — Revocable AI Governance Delegation',
@@ -32,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       data-theme="dark"
-      className={`${sans.variable} ${display.variable} ${mono.variable} ${brandDisplay.variable} ${brandMono.variable} ${brandDisplayAlt.variable}`}
+      className={`${sans.variable} ${maple.variable} ${mapleCN.variable}`}
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
