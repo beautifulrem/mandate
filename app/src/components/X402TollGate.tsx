@@ -113,17 +113,20 @@ export function X402TollGate({ cfg, t, bare = false }: { cfg: DemoConfig; t: Dic
         <p className="mt-2 text-[12px] leading-relaxed text-ink-mute">{t.x402.scopeNote}</p>
       </div>
 
-      {/* lifecycle stepper + live read */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+      {/* lifecycle — a vertical step log; each phase explains what actually happens */}
+      <div className="mt-4 flex flex-col gap-2.5">
         {X402_PHASES.map((p, i) => {
           const state = step === 0 ? 'idle' : step > i ? 'done' : step === i ? 'current' : 'idle';
           return (
-            <div key={p.key} className={cn('inline-flex items-center gap-2 transition-opacity', state === 'idle' ? 'opacity-45' : 'opacity-100')}>
-              <span className={cn('size-2.5 rounded-full', state === 'done' ? 'bg-ok' : state === 'current' ? 'bg-brand motion-safe:animate-glow' : 'bg-line')} />
-              <span className="text-[13px] text-ink-soft">
-                {t.x402.phases[p.key]}
-                {p.code != null && <span className="font-mono text-[11px] text-ink-mute"> · {p.code}</span>}
-              </span>
+            <div key={p.key} className={cn('flex gap-2.5 transition-opacity', state === 'idle' ? 'opacity-45' : 'opacity-100')}>
+              <span className={cn('mt-1 size-2.5 shrink-0 rounded-full', state === 'done' ? 'bg-ok' : state === 'current' ? 'bg-brand motion-safe:animate-glow' : 'bg-line')} />
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-ink-soft">
+                  {t.x402.phases[p.key]}
+                  {p.code != null && <span className="font-mono text-[11px] font-normal text-ink-mute"> · {p.code}</span>}
+                </div>
+                <div className="text-[11.5px] leading-snug text-ink-mute">{t.x402.phaseDesc[p.key]}</div>
+              </div>
             </div>
           );
         })}
@@ -136,17 +139,27 @@ export function X402TollGate({ cfg, t, bare = false }: { cfg: DemoConfig; t: Dic
         {tracing && step >= X402_PHASES.length && bal === null && (
           <span className="font-mono text-[11px] text-ink-mute motion-safe:animate-pulse">{t.x402.reading}</span>
         )}
-        {bal !== null && (
-          <Badge tone="ok">
-            <Wallet className="size-3" /> {t.x402.sellerBalance}: {bal} {TOLL_SYMBOL}
-          </Badge>
-        )}
         {err && (
           <span className="flex items-center gap-1.5 text-[12px] text-bad">
             <AlertTriangle className="size-3.5" /> {err}
           </span>
         )}
       </div>
+
+      {/* result — plain-language outcome + the seller's real on-chain balance (the actual proof) */}
+      {bal !== null && (
+        <div className="mt-3 rounded-xl border border-ok/25 bg-ok/[0.06] px-4 py-3.5">
+          <p className="text-[12.5px] leading-relaxed text-ink-soft">{t.x402.result}</p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <Badge tone="ok">
+              <Wallet className="size-3" /> {t.x402.sellerBalance}: {bal} {TOLL_SYMBOL}
+            </Badge>
+            <span className="inline-flex items-center gap-1.5 rounded-chip border border-info/30 bg-info/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-info">
+              <span className="size-1.5 rounded-full bg-info motion-safe:animate-pulse" /> {t.x402.liveRead}
+            </span>
+          </div>
+        </div>
+      )}
     </Panel>
   );
 }

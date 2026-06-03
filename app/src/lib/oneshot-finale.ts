@@ -27,6 +27,10 @@ export const MAINNET_PROOF = {
   governor: '0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5' as Address,
   delegationManager: '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3' as Address,
   feeUsdc: '0.01',
+  // Recorded receipt of castVoteTx (verifiable on BaseScan). Used as a fallback when the public RPC
+  // doesn't serve the historical receipt; the finale upgrades to a live read when it does.
+  block: 46680770,
+  gasUsed: 384048,
 } as const;
 
 /** 1Shot relay status phases (codes mirror oneshot.ts STATUS_LABEL) shown in the stepper. */
