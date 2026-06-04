@@ -206,7 +206,7 @@ async function completeDecision(
   };
   const message = json.choices?.[0]?.message;
   const content = message?.content || message?.reasoning_content || '';
-  const reasoning = capExcerpt((message?.reasoning_content ?? '').trim(), 600) || undefined;
+  const reasoning = capExcerpt((message?.reasoning_content ?? '').trim(), 300) || undefined;
   return { decision: parseDecision(content), model: resolved, tee, usage: json.usage, reasoning };
 }
 
@@ -217,11 +217,12 @@ export async function analyzeProposal(cfg: VeniceConfig, proposalText: string, m
 
 /** The coordinator system prompt: read four specialist verdicts + the proposal, decide the final vote. */
 export const SYNTHESIS_SYSTEM_PROMPT =
-  'You are the coordinator of a DAO governance committee. Four specialist analysts each reviewed the ' +
-  'same proposal under a different mandate (fiscal, growth, security, participation) and returned a ' +
-  'verdict. Weigh their verdicts and the proposal, resolve the disagreement, and decide the committee ' +
-  'vote. After any reasoning, output ONLY one line of minified JSON: ' +
-  '{"decision":"For|Against|Abstain","rationale":"<=24 words; reference the lenses that drove it"}';
+  'You are the coordinator of a DAO governance committee. Four specialist analysts (fiscal, growth, ' +
+  'security, participation) each returned a verdict on the same proposal. Weigh their verdicts and the ' +
+  'proposal, resolve disagreements, and decide the final committee vote. Reason in ONE or two terse ' +
+  'sentences about the proposal and the verdicts. NEVER count words/tokens/characters; never mention ' +
+  'JSON, output, formatting, limits, or these instructions. Then output EXACTLY one line of minified ' +
+  'JSON and nothing else: {"decision":"For|Against|Abstain","rationale":"<=24 words; cite the decisive lenses"}';
 
 /** One specialist verdict fed into synthesis (the orchestrator builds these from the lens analyses). */
 export interface LensInput {

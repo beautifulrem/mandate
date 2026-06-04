@@ -45,11 +45,14 @@ interface ChainNodeProps {
 }
 
 function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, tee, thinking, killed, board, small, floatBelow, verdict, pips }: ChainNodeProps) {
-  const accent = board ? 'var(--color-ok)' : 'var(--color-brand)';
+  // the four lenses are TEE analyses → render them cold (info blue); the authority spine stays brand
+  // orange and the board stays on-chain green, so the eye reads "blue committee → hot verdict".
+  const accent = board ? 'var(--color-ok)' : small ? 'var(--color-info)' : 'var(--color-brand)';
   const ringActive = !!active && !killed;
-  const ringColor = board ? 'rgba(74,222,128,.55)' : 'rgba(246,133,27,.5)';
-  const ringBg = board ? 'rgba(74,222,128,.12)' : 'rgba(246,133,27,.15)';
-  const size = small ? 44 : 60;
+  const ringColor = board ? 'rgba(74,222,128,.55)' : small ? 'rgba(110,168,254,.5)' : 'rgba(246,133,27,.5)';
+  const ringBg = board ? 'rgba(74,222,128,.12)' : small ? 'rgba(110,168,254,.13)' : 'rgba(246,133,27,.15)';
+  const glowRing = board ? 'rgba(74,222,128,.06)' : small ? 'rgba(110,168,254,.07)' : 'rgba(246,133,27,.06)';
+  const size = small ? 38 : 60;
   return (
     <div
       ref={nodeRef}
@@ -77,17 +80,15 @@ function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, tee,
           background: ringActive ? ringBg : 'rgba(20,25,37,.6)',
           backdropFilter: 'blur(6px)',
           color: ringActive ? accent : 'var(--color-ink-mute)',
-          boxShadow: ringActive
-            ? `0 0 0 6px ${board ? 'rgba(74,222,128,.06)' : 'rgba(246,133,27,.06)'}, 0 0 34px -10px ${accent}`
-            : 'none',
+          boxShadow: ringActive ? `0 0 0 ${small ? 5 : 6}px ${glowRing}, 0 0 34px -10px ${accent}` : 'none',
           transition: 'all .3s',
           animation: working && !killed ? 'glow 2.8s ease-in-out infinite' : 'none',
         }}
       >
-        <Icon size={small ? 19 : 24} strokeWidth={1.5} />
+        <Icon size={small ? 16 : 24} strokeWidth={1.5} />
       </span>
       <div style={floatBelow ? { position: 'absolute', top: '100%', left: 0, right: 0 } : undefined}>
-      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: small ? 12.5 : 15.5, color: ringActive ? accent : 'var(--color-ink)', marginTop: small ? 6 : 9 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: small ? 10.5 : 15.5, color: ringActive ? accent : 'var(--color-ink)', marginTop: small ? 3 : 9 }}>
         {who}
       </div>
       {role && <div style={{ marginTop: 2, fontSize: 12, color: 'var(--color-ink-mute)' }}>{role}</div>}
@@ -193,14 +194,15 @@ function Beam({
       const b = to.current.getBoundingClientRect();
       // connect the icon-circle centres (top of each node), then trim along the beam so it starts/
       // ends just outside each circle — works for the angled fan-out/fan-in beams too.
-      const iconY = (r: DOMRect) => r.top - cr.top + (r.width >= 56 ? 30 : 22); // small nodes have a smaller circle
+      const rad = (r: DOMRect) => (r.width >= 56 ? 30 : 19); // main circle radius 30, small lens radius 19
+      const iconY = (r: DOMRect) => r.top - cr.top + rad(r); // circle-centre row
       const aC = { x: a.left - cr.left + a.width / 2, y: iconY(a) };
       const bC = { x: b.left - cr.left + b.width / 2, y: iconY(b) };
       const dx = bC.x - aC.x;
       const dy = bC.y - aC.y;
       const len = Math.hypot(dx, dy) || 1;
-      const ax = a.width >= 56 ? 34 : 26; // trim ≈ circle radius + a little
-      const bx = b.width >= 56 ? 34 : 26;
+      const ax = rad(a) + 4; // trim to just outside each circle, along the beam
+      const bx = rad(b) + 4;
       const start = { x: aC.x + (dx / len) * ax, y: aC.y + (dy / len) * ax };
       const end = { x: bC.x - (dx / len) * bx, y: bC.y - (dy / len) * bx };
       const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
@@ -417,7 +419,7 @@ export function AuthorityChain({
       <ChainNode nodeRef={orchRef} icon={Bot} who={t.nodes.orch.who} role={t.nodes.orch.role} addr={parties.orch} active={nodeLit('redelegated')} working={orchWorking} floatBelow killed={killed} />
 
       {/* the four governance lenses (decision agents), stacked between the orchestrator and synthesis */}
-      <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center', alignSelf: 'center' }}>
+      <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', alignSelf: 'center' }}>
         {LENSES.map((lens, i) => {
           const lit = lensLit >= i;
           const v = verdictFor(lens.key);

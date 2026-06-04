@@ -49,7 +49,7 @@ export function TeeConsole({
 
   return (
     <div
-      className="tee-console relative w-full max-w-[620px] shrink-0 overflow-hidden rounded-[14px] border border-info/25 bg-[#070b14]/85 backdrop-blur"
+      className="tee-console relative w-full max-w-[580px] shrink-0 overflow-hidden rounded-[14px] border border-info/25 bg-[#070b14]/85 backdrop-blur"
       style={{ boxShadow: '0 0 0 1px rgba(110,168,254,0.18), 0 20px 50px -28px rgba(0,0,0,0.8)' }}
     >
       <span className="tee-sweep" aria-hidden />
@@ -65,12 +65,12 @@ export function TeeConsole({
           <span className="ml-auto font-mono text-[11px] text-ink-mute">{model}</span>
         </div>
 
-        <div className="px-4 py-3.5">
+        <div className="px-3.5 py-2.5">
           {/* committee — the four governance lenses report their verdicts */}
-          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-info/70">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-info/70">
             <Sparkles className="size-3" /> {t.teeCommittee}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {LENSES.map((lens) => {
               const v = lenses?.find((l) => l.lens === lens.key);
               const vt = v ? decisionColor(v.decision) : undefined;
@@ -96,10 +96,10 @@ export function TeeConsole({
           </div>
 
           {/* synthesis — the coordinator weighs the four and decides */}
-          <div className="tee-boot mb-2 mt-3 font-mono text-[11px] text-info/75">
+          <div className="tee-boot mb-1.5 mt-2.5 font-mono text-[11px] text-info/75">
             [venice-tdx] {decided ? `synthesis · ${model}` : t.teeSynthesizing}
           </div>
-          <div className="min-h-[44px] whitespace-pre-wrap break-words font-mono text-[12.5px] leading-[1.65] text-[#8fb6ef]">
+          <div className="hud-scroll min-h-[34px] max-h-[92px] overflow-y-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.5] text-[#8fb6ef]">
             {decided ? (
               <>
                 {text}

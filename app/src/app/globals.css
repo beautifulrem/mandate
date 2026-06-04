@@ -276,15 +276,15 @@ html, body { height: 100%; overflow: hidden; }
 
 /* centered focal column (the only scroller) */
 .mc-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
-  justify-content: safe center; gap: 15px; padding: 70px 96px 18px; overflow: auto; }
+  justify-content: safe center; gap: 9px; padding: 52px 80px 10px; overflow: auto; }
 .mc-center::-webkit-scrollbar { width: 0; }
 
 /* proposal HUD */
 .mc-statusline { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 12px; font-weight: 600;
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ok); white-space: nowrap; }
-.mc-title { font-family: var(--font-display); font-weight: 700; font-size: 29px; line-height: 1.12; letter-spacing: -0.01em;
-  color: var(--color-ink); text-align: center; margin: 14px 0 0; text-wrap: balance; }
-.mc-body { max-width: 600px; text-align: center; font-size: 14px; line-height: 1.55; color: var(--color-ink-soft); margin: 10px auto 0; text-wrap: pretty; }
+.mc-title { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; letter-spacing: -0.01em;
+  color: var(--color-ink); text-align: center; margin: 8px 0 0; text-wrap: balance; }
+.mc-body { max-width: 600px; text-align: center; font-size: 13.5px; line-height: 1.4; color: var(--color-ink-soft); margin: 6px auto 0; text-wrap: pretty; }
 
 /* segmented tally bar */
 .mc-tallybar { display: flex; height: 6px; width: 360px; max-width: 70vw; border-radius: 999px; overflow: hidden; gap: 2px; }
@@ -364,7 +364,7 @@ html, body { height: 100%; overflow: hidden; }
 /* ---- Venice-TEE console: "sealed enclave" hacker terminal (Matrix-flavoured) ----
    Layering: console bg → .tee-rain (code rain, z0) → .tee-crt / .tee-sweep (z1) → content (z2). */
 .tee-console { animation: teeRise 0.62s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.tee-crt { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0.22; mix-blend-mode: soft-light;
+.tee-crt { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0.14; mix-blend-mode: soft-light;
   background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 5px); }
 .tee-sweep { position: absolute; left: 0; right: 0; top: 0; height: 20px; z-index: 1; pointer-events: none; filter: blur(1px); mix-blend-mode: screen;
   background: linear-gradient(180deg, transparent, rgba(56, 224, 255, 0.22) 46%, rgba(246, 133, 27, 0.1) 54%, transparent);
@@ -437,6 +437,9 @@ html, body { height: 100%; overflow: hidden; }
   0%   { transform: scale(0.82); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
   45%  { transform: scale(1.13); box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.16), 0 0 20px rgba(74, 222, 128, 0.55); }
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
+/* a lens / synthesis verdict pill pops + glows as it crystallizes */
+.mc-verdict-pop { animation: verdictPop 0.42s var(--ease-snappy) both; text-shadow: 0 0 7px currentColor; }
+@keyframes verdictPop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
 
 /* capability dock — x402 + 1Shot surfaced as native high-value cards */
 .mc-dock { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
@@ -509,12 +512,12 @@ html, body { height: 100%; overflow: hidden; }
 .mc-pop-body button:not(.mc-btn):disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
 /* ---- the authority chain graph (4 nodes, flowing beams, scissors-cut) ---- */
-.chain { position: relative; display: flex; align-items: stretch; gap: 24px; padding-top: 16px; }
+.chain { position: relative; display: flex; align-items: stretch; gap: 16px; padding-top: 6px; }
 .chain.killed { animation: shake 0.5s; }
 .beam-svg { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: visible; }
 .beam-base { fill: none; stroke: var(--color-line); stroke-width: 2; stroke-linecap: round; transition: stroke 0.3s; }
 .beam-base.killed { stroke: var(--color-bad); stroke-dasharray: 5 7; opacity: 0.7; }
-.beam-pulse { fill: none; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 9 13; animation: beamFlow 0.55s linear infinite; filter: drop-shadow(0 0 6px currentColor); }
+.beam-pulse { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 7 14; animation: beamFlow 0.55s linear infinite; filter: drop-shadow(0 0 6px currentColor); }
 @keyframes beamFlow { to { stroke-dashoffset: -22; } }
 @keyframes shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); } 30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); } }
 
@@ -569,6 +572,7 @@ html, body { height: 100%; overflow: hidden; }
   .mc-pop.right, .mc-pop.left { animation: none; }
   .mc-phase.current .pd { animation: none; }
   .mc-chip.met { animation: none; }
+  .mc-verdict-pop { animation: none; }
 }
 
 @media (max-width: 720px) {
