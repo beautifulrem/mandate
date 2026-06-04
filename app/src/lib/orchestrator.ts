@@ -4,7 +4,10 @@ import { ORCHESTRATOR_URL } from './config';
 export interface DemoConfig {
   chainId: number;
   governor: `0x${string}`;
+  /** the MVOTE voting token (voting power only). */
   token: `0x${string}`;
+  /** the mUSDC token the AI's x402 budget is denominated in. */
+  paymentToken: `0x${string}`;
   proposalId: string;
   orchestratorSA: `0x${string}`;
   analyst: `0x${string}`;
