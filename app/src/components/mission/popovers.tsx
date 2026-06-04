@@ -122,8 +122,11 @@ function RunBody({ vm }: { vm: MissionVM }) {
           <VoteResultBanner run={vm.run} killed={vm.killed} recallTx={vm.recallTx} userSAAddress={vm.userSA?.address} t={t} />
         </div>
       )}
-      {vm.run && <ProofTimeline run={vm.run} killed={vm.killed} t={t} />}
-      {vm.voteLog.length > 0 && <VoteLog records={vm.voteLog} lang={vm.lang} t={t} />}
+      {/* Once severed, the dossier collapses to the on-chain "severed + recall proof" banner above:
+          the run timeline, the TEE reasoning and the vote log all describe a now-dead mandate, so
+          showing them as a completed run reads as still-alive. They return on the next fresh grant. */}
+      {vm.run && !vm.killed && <ProofTimeline run={vm.run} killed={vm.killed} t={t} />}
+      {vm.voteLog.length > 0 && !vm.killed && <VoteLog records={vm.voteLog} lang={vm.lang} t={t} />}
     </div>
   );
 }
