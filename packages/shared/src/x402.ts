@@ -53,12 +53,25 @@ export function build402(opts: {
   };
 }
 
-/** Encode/decode the X-PAYMENT header (a base64 JSON of the signed delegation). */
+/** Encode/decode the X-PAYMENT header (a base64 JSON of the signed delegation). Browser-safe: uses
+ *  node Buffer when present (orchestrator), else btoa/atob + TextEncoder so the barrel bundles cleanly
+ *  into the Next.js client (@mandate/shared must stay browser-safe). */
 export function encodePayment(signedDelegation: Delegation): string {
-  return Buffer.from(JSON.stringify(signedDelegation)).toString('base64');
+  const json = JSON.stringify(signedDelegation);
+  if (typeof Buffer !== 'undefined') return Buffer.from(json, 'utf8').toString('base64');
+  let bin = '';
+  for (const byte of new TextEncoder().encode(json)) bin += String.fromCharCode(byte);
+  return btoa(bin);
 }
 export function decodePayment(header: string): Delegation {
-  return JSON.parse(Buffer.from(header, 'base64').toString('utf8')) as Delegation;
+  let json: string;
+  if (typeof Buffer !== 'undefined') {
+    json = Buffer.from(header, 'base64').toString('utf8');
+  } else {
+    const bytes = Uint8Array.from(atob(header), (c) => c.charCodeAt(0));
+    json = new TextDecoder().decode(bytes);
+  }
+  return JSON.parse(json) as Delegation;
 }
 
 /** The buyer's scoped payment delegation: lets `seller` pull up to `amount` of `asset`. */
