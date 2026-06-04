@@ -287,6 +287,7 @@ export default function Home() {
     run,
     s,
     venice: run?.venice,
+    lenses: run?.lenses,
     rootDel,
     grantedProposalId,
     grantRunId,

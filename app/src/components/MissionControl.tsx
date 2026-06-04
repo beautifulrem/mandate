@@ -47,6 +47,7 @@ export interface MissionVM {
   run: RunStatus | null;
   s?: string;
   venice: RunStatus['venice'];
+  lenses: RunStatus['lenses'];
   rootDel: Delegation | null;
   grantedProposalId: bigint | null;
   grantRunId: string | null;
