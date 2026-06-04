@@ -141,4 +141,10 @@ describe('stripReasoningMeta', () => {
   it('returns an empty string when every sentence is formatting meta', () => {
     expect(stripReasoningMeta('Output one line of minified JSON. Must be ≤24 words.')).toBe('');
   });
+
+  it('also drops "terse sentences" + option-list instruction echoes, keeping the deliberation', () => {
+    const leaked =
+      'We need to weigh verdicts. Two for, two against. Must reason in one or two terse sentences about proposal and verdicts. We must pick decision: For, Against, or Abstain. Which lens is decisive?';
+    expect(stripReasoningMeta(leaked)).toBe('We need to weigh verdicts. Two for, two against. Which lens is decisive?');
+  });
 });

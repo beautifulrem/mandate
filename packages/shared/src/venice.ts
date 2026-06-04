@@ -278,7 +278,7 @@ export function capExcerpt(s: string, max: number): string {
  */
 export function stripReasoningMeta(reasoning: string): string {
   const META =
-    /\bjson\b|minif|one[\s-]?line|≤\s*\d|<=\s*\d|\b\d+\s*(?:words?|tokens?|chars?|characters?)\b|\boutput\b|\bformat(?:ting)?\b|\binstruction|\bshould\s+(?:mention|cite|include|output)|cit(?:e|ing)\b[^.。]*\blens|\brationale\b\s*(?:≤|<=|:)/i;
+    /\bjson\b|minif|one[\s-]?line|≤\s*\d|<=\s*\d|\b\d+\s*(?:words?|tokens?|chars?|characters?)\b|\boutput\b|\bformat(?:ting)?\b|\binstruction|\bterse\b|\bsentences?\b|\bfor,?\s*against,?\s*(?:or\s+)?abstain\b|\bmust\s+(?:reason|pick|output|cite|mention|produce|return)\b|\bshould\s+(?:mention|cite|include|output)|cit(?:e|ing)\b[^.。]*\blens|\brationale\b\s*(?:≤|<=|:)/i;
   return reasoning
     .split(/(?<=[.。!?…])\s+/)
     .map((s) => s.trim())
