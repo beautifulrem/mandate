@@ -566,6 +566,40 @@ html, body { height: 100%; overflow: hidden; }
 .beam-cut { animation: severRecoil 0.45s var(--ease-snappy) both; }
 @keyframes severRecoil { from { transform: translateY(calc(var(--droop) * -1)); } to { transform: none; } }
 
+/* x402 PAYMENT — a wallet, a spinning gold coin that flies the real on-chain settlement, a deposit
+   ring at the seller, and the AI data the buyer paid for streaming BACK (cyan, distinct from gold).
+   The coin's POSITION is driven imperatively by Framer Motion (outer .pay-coin); the SPIN is this CSS
+   on the inner .pay-coin-face, so translate (Motion) and spin (CSS) compose without fighting. */
+.pay-coin { position: absolute; left: 0; top: 0; width: 18px; height: 18px; z-index: 3; pointer-events: none; will-change: transform; }
+.pay-coin-face { width: 100%; height: 100%; border-radius: 999px;
+  background: radial-gradient(circle at 36% 30%, #fff6d8 0%, #ffd470 32%, #f5b942 64%, #b4801c 100%);
+  box-shadow: 0 0 12px 2px rgba(255, 212, 112, 0.6), inset 0 0 4px rgba(255, 255, 255, 0.55);
+  animation: coinSpin 0.9s linear infinite; will-change: transform; }
+/* edge-on squash at the quarter points reads as a coin spinning about its vertical axis (~2 turns/cycle) */
+@keyframes coinSpin {
+  0% { transform: scaleX(1); } 12.5% { transform: scaleX(0.08); } 25% { transform: scaleX(1); }
+  37.5% { transform: scaleX(0.08); } 50% { transform: scaleX(1); } 62.5% { transform: scaleX(0.08); }
+  75% { transform: scaleX(1); } 87.5% { transform: scaleX(0.08); } 100% { transform: scaleX(1); } }
+/* gold "clink" ring that expands at the seller when the coin lands */
+.pay-ring { position: absolute; z-index: 3; width: 12px; height: 12px; border-radius: 999px; pointer-events: none;
+  transform: translate(-50%, -50%); border: 2px solid #ffd470; box-shadow: 0 0 20px 6px rgba(255, 212, 112, 0.55);
+  animation: payRing 0.62s ease-out forwards; }
+@keyframes payRing {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(3.3); opacity: 0; } }
+/* a small wallet badge (at You = payer, and at the seller = payee) that pulses as it emits / receives */
+.pay-wallet { position: absolute; z-index: 3; transform: translate(-50%, -50%); pointer-events: none;
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: #1a0f02;
+  background: linear-gradient(135deg, #ffd470, #a8791f); box-shadow: 0 3px 10px -3px rgba(255, 212, 112, 0.5);
+  transition: opacity 0.3s, filter 0.3s; }
+.pay-wallet.pulse { animation: walletPulse 0.5s var(--ease-snappy); }
+@keyframes walletPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 35% { transform: translate(-50%, -50%) scale(1.22); } }
+/* the AI data the buyer paid for, streaming BACK seller→you: cyan SQUARES (color+shape+size+direction
+   all differ from the gold coin, so pay vs data reads at a glance and stays colorblind-safe). */
+.data-packet { position: absolute; z-index: 2; width: 6px; height: 6px; border-radius: 1.5px; pointer-events: none;
+  transform: translate(-50%, -50%); background: var(--color-cyan); box-shadow: 0 0 9px 1px var(--color-cyan-soft);
+  animation: beamTravel 0.6s var(--ease-snappy) forwards; }
+
 @keyframes ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .mc-thinking { animation: pulse 1.6s ease-in-out infinite; }
@@ -584,6 +618,10 @@ html, body { height: 100%; overflow: hidden; }
   .beam-scissor.snip { animation: none; }
   .beam-spark { animation: none; opacity: 0; }
   .beam-cut { animation: none; }
+  .pay-coin-face { animation: none; }
+  .pay-ring { animation: none; opacity: 0; }
+  .pay-wallet.pulse { animation: none; }
+  .data-packet { animation: none; opacity: 0; }
   .mc-thinking { animation: none; }
   .mc-pop.right, .mc-pop.left { animation: none; }
   .mc-phase.current .pd { animation: none; }

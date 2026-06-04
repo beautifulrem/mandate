@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
-import { Bot, Boxes, CheckCircle2, Coins, ExternalLink, Filter, Gavel, Lock, Receipt, Scale, Scissors, ShieldCheck, TrendingUp, User, Users, type LucideIcon } from 'lucide-react';
+import { animate, useReducedMotion } from 'motion/react';
+import { Bot, Boxes, CheckCircle2, Coins, ExternalLink, Filter, Gavel, Lock, Receipt, Scale, Scissors, ShieldCheck, TrendingUp, User, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { LENSES, type Decision, type LensKey, type LensVerdict } from '@mandate/shared';
 import { BASESCAN, shortHex } from '../../lib/config';
 import { ORDER } from '../../lib/runState';
@@ -367,7 +368,7 @@ function BudgetChip({
       if (!container.current || !youRef.current) return;
       const cr = container.current.getBoundingClientRect();
       const r = youRef.current.getBoundingClientRect();
-      setP({ x: r.left - cr.left + r.width / 2, y: r.top - cr.top - 52 });
+      setP({ x: r.left - cr.left + r.width / 2, y: r.top - cr.top - 74 });
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -415,39 +416,84 @@ function BudgetChip({
   );
 }
 
-/** A single gold coin that pulses from You toward the data-feed seller (the Arbiter node carries the
- *  analyst address) the moment the AI fetches context ('analyzing'). Renders ONLY the travelling
- *  packet (reusing the .beam-packet keyframe — single-shot, hidden under prefers-reduced-motion); no
- *  persistent line, so it adds no clutter to the spine. */
-function CoinPacket({
+/** The x402 payment sub-flow welded onto the spine: a WALLET at You and at the seller (终裁); a gold
+ *  COIN that spins and flies You→Orchestrator→seller, CRUISING (looping) for as long as the real
+ *  on-chain settlement is pending — then the instant the toll lands it hops into the seller's wallet
+ *  (gold "clink" ring) and the AI data the buyer paid for streams BACK (cyan squares) seller→You.
+ *  Flight position is driven imperatively by Framer Motion so it can await an async promise of unknown
+ *  length (CSS fixed-duration can't); the spin / wallet pulse / ring / data squares are CSS. */
+type PayPoint = { x: number; y: number };
+interface PayGeom {
+  pts: [PayPoint, PayPoint, PayPoint];
+  segLens: [number, number];
+  total: number;
+  you: PayPoint;
+  synth: PayPoint;
+}
+
+/** Position along the You→Orchestrator→seller polyline at progress p∈[0,1]. */
+function payPointAt(g: PayGeom, p: number): PayPoint {
+  const d = p * g.total;
+  if (d <= g.segLens[0]) {
+    const t = g.segLens[0] ? d / g.segLens[0] : 0;
+    return { x: g.pts[0].x + (g.pts[1].x - g.pts[0].x) * t, y: g.pts[0].y + (g.pts[1].y - g.pts[0].y) * t };
+  }
+  const t = g.segLens[1] ? (d - g.segLens[0]) / g.segLens[1] : 0;
+  return { x: g.pts[1].x + (g.pts[2].x - g.pts[1].x) * t, y: g.pts[1].y + (g.pts[2].y - g.pts[1].y) * t };
+}
+
+function PaymentFlow({
   container,
-  from,
-  to,
-  live,
+  youRef,
+  orchRef,
+  synthRef,
+  active,
+  settled,
   killed,
 }: {
   container: DivRef;
-  from: DivRef;
-  to: DivRef;
-  live: boolean;
+  youRef: DivRef;
+  orchRef: DivRef;
+  synthRef: DivRef;
+  /** the AI is working/paying (run is analyzing→voting and no toll yet) → coin cruises. */
+  active: boolean;
+  /** a real toll settled for the shown proposal → land + deposit + data stream. */
+  settled: boolean;
   killed: boolean;
 }) {
-  const [seg, setSeg] = useState<{ x: number; y: number; dx: number; dy: number } | null>(null);
+  const reduce = useReducedMotion();
+  const coinRef = useRef<HTMLDivElement>(null);
+  const youWalletRef = useRef<HTMLSpanElement>(null);
+  const synthWalletRef = useRef<HTMLSpanElement>(null);
+  const curRef = useRef<PayPoint | null>(null);
+  const [geom, setGeom] = useState<PayGeom | null>(null);
+  const [burst, setBurst] = useState(0); // bumps on each landing to (re)spawn the data-stream squares + ring
+
   useEffect(() => {
     const compute = () => {
-      if (!from.current || !to.current || !container.current) return;
+      if (!container.current || !youRef.current || !orchRef.current || !synthRef.current) return;
       const cr = container.current.getBoundingClientRect();
-      const a = from.current.getBoundingClientRect();
-      const b = to.current.getBoundingClientRect();
       const rad = (r: DOMRect) => (r.width >= 56 ? 30 : 19);
-      const aC = { x: a.left - cr.left + a.width / 2, y: a.top - cr.top + rad(a) };
-      const bC = { x: b.left - cr.left + b.width / 2, y: b.top - cr.top + rad(b) };
-      const dx = bC.x - aC.x;
-      const dy = bC.y - aC.y;
-      const len = Math.hypot(dx, dy) || 1;
-      const start = { x: aC.x + (dx / len) * (rad(a) + 4), y: aC.y + (dy / len) * (rad(a) + 4) };
-      const end = { x: bC.x - (dx / len) * (rad(b) + 4), y: bC.y - (dy / len) * (rad(b) + 4) };
-      setSeg({ x: start.x, y: start.y, dx: end.x - start.x, dy: end.y - start.y });
+      const center = (r: DOMRect): PayPoint => ({ x: r.left - cr.left + r.width / 2, y: r.top - cr.top + rad(r) });
+      const along = (p: PayPoint, q: PayPoint, dist: number): PayPoint => {
+        const dx = q.x - p.x;
+        const dy = q.y - p.y;
+        const len = Math.hypot(dx, dy) || 1;
+        return { x: p.x + (dx / len) * dist, y: p.y + (dy / len) * dist };
+      };
+      const a = youRef.current.getBoundingClientRect();
+      const b = orchRef.current.getBoundingClientRect();
+      const c = synthRef.current.getBoundingClientRect();
+      const A = center(a);
+      const B = center(b);
+      const C = center(c);
+      const youEdge = along(A, B, rad(a) + 6); // coin leaves the wallet just outside the You circle
+      const synthEdge = along(C, B, rad(c) + 6); // and lands just outside the seller circle
+      const segLens: [number, number] = [
+        Math.hypot(B.x - youEdge.x, B.y - youEdge.y),
+        Math.hypot(synthEdge.x - B.x, synthEdge.y - B.y),
+      ];
+      setGeom({ pts: [youEdge, B, synthEdge], segLens, total: segLens[0] + segLens[1], you: youEdge, synth: synthEdge });
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -457,21 +503,97 @@ function CoinPacket({
       ro.disconnect();
       window.removeEventListener('resize', compute);
     };
-  }, [container, from, to, live]);
-  if (!seg || !live || killed) return null;
+  }, [container, youRef, orchRef, synthRef]);
+
+  useEffect(() => {
+    const coin = coinRef.current;
+    if (!geom || !coin || reduce) return;
+    const place = (pt: PayPoint, opacity: number) => {
+      coin.style.transform = `translate3d(${pt.x - 9}px, ${pt.y - 9}px, 0)`;
+      coin.style.opacity = `${opacity}`;
+    };
+    const repulse = (ref: typeof youWalletRef) => {
+      ref.current?.classList.remove('pulse');
+      void ref.current?.offsetWidth; // reflow so the one-shot pulse re-fires
+      ref.current?.classList.add('pulse');
+    };
+
+    if (killed) {
+      coin.style.opacity = '0';
+      return;
+    }
+    if (settled) {
+      // the toll landed — hop the coin from wherever it is into the seller's wallet, then deposit + data
+      const start = curRef.current ?? geom.you;
+      const controls = animate(0, 1, {
+        duration: 0.5,
+        ease: [0.16, 1, 0.3, 1],
+        onUpdate: (t) => {
+          place({ x: start.x + (geom.synth.x - start.x) * t, y: start.y + (geom.synth.y - start.y) * t }, 1 - t * 0.55);
+        },
+        onComplete: () => {
+          coin.style.opacity = '0';
+          curRef.current = null;
+          repulse(synthWalletRef);
+          setBurst((n) => n + 1); // fire the gold "clink" ring + the cyan data stream back to You
+        },
+      });
+      return () => controls.stop();
+    }
+    if (active) {
+      // cruise: loop You→Orchestrator→seller for as long as the settlement is pending
+      place(geom.you, 1);
+      repulse(youWalletRef);
+      const controls = animate(0, 1, {
+        duration: 2,
+        ease: 'linear',
+        repeat: Infinity,
+        onUpdate: (p) => {
+          const pt = payPointAt(geom, p);
+          curRef.current = pt;
+          place(pt, 1);
+        },
+      });
+      return () => controls.stop();
+    }
+    coin.style.opacity = '0';
+    curRef.current = null;
+  }, [geom, active, settled, killed, reduce]);
+
+  if (!geom) return null;
+  const dim: CSSProperties | undefined = killed ? { opacity: 0.4, filter: 'grayscale(1)' } : undefined;
   return (
-    <span
-      className="beam-packet"
-      style={
-        {
-          left: seg.x,
-          top: seg.y,
-          color: TONES.pay.packet,
-          '--dx': `${seg.dx}px`,
-          '--dy': `${seg.dy}px`,
-        } as CSSProperties
-      }
-    />
+    <>
+      <span ref={youWalletRef} className="pay-wallet" style={{ left: geom.you.x, top: geom.you.y, ...dim }}>
+        <Wallet size={12} />
+      </span>
+      <span ref={synthWalletRef} className="pay-wallet" style={{ left: geom.synth.x, top: geom.synth.y, ...dim }}>
+        <Wallet size={12} />
+      </span>
+      <div ref={coinRef} className="pay-coin" style={{ opacity: 0, transform: `translate3d(${geom.you.x - 9}px, ${geom.you.y - 9}px, 0)` }}>
+        <div className="pay-coin-face" />
+      </div>
+      {burst > 0 && !killed && (
+        <>
+          <span key={`ring-${burst}`} className="pay-ring" style={{ left: geom.synth.x, top: geom.synth.y }} />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <span
+              key={`data-${burst}-${i}`}
+              className="data-packet"
+              style={
+                {
+                  left: geom.synth.x,
+                  top: geom.synth.y,
+                  '--dx': `${geom.you.x - geom.synth.x}px`,
+                  '--dy': `${geom.you.y - geom.synth.y}px`,
+                  animationDelay: `${i * 0.16}s`,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </>
+      )}
+    </>
   );
 }
 
@@ -702,9 +824,19 @@ export function AuthorityChain({
       {/* x402 sub-flow welded onto the spine: budget chip above You, a coin pulsing You->seller while
           the AI fetches context, and a receipt tick at the seller once the toll settles on-chain. */}
       {connected && !!paymentCap && (
-        <BudgetChip container={containerRef} youRef={youRef} spent={paymentSpent ?? 0} cap={paymentCap} killed={killed} label={t.x402.buyerYou} />
+        <>
+          <BudgetChip container={containerRef} youRef={youRef} spent={paymentSpent ?? 0} cap={paymentCap} killed={killed} label={t.x402.buyerYou} />
+          <PaymentFlow
+            container={containerRef}
+            youRef={youRef}
+            orchRef={orchRef}
+            synthRef={synthRef}
+            active={beamLive('analyzing') && !tollSettled}
+            settled={!!tollSettled}
+            killed={killed}
+          />
+        </>
       )}
-      <CoinPacket container={containerRef} from={youRef} to={synthRef} live={beamLive('analyzing')} killed={killed} />
       {tollSettled && !killed && <ReceiptTick container={containerRef} nodeRef={synthRef} txHash={tollTxHash} />}
     </div>
   );
