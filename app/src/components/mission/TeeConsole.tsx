@@ -1,6 +1,6 @@
 'use client';
 
-import type { RunStatus } from '@mandate/shared';
+import { LENSES, type RunStatus } from '@mandate/shared';
 import { BadgeCheck, FileSignature, Lock, Sparkles } from 'lucide-react';
 import { shortHex } from '../../lib/config';
 import { ORDER } from '../../lib/runState';
@@ -9,21 +9,23 @@ import { Badge } from '../ui/Badge';
 import { decisionColor, TeeCursor, useTeeStream } from './teeStream';
 
 /**
- * The centerpiece Venice-TEE reasoning console — a sealed-enclave "hacker terminal". It opens with a
- * decrypt/rise reveal + scanline sweep over a confined code-rain, types the reasoning token-by-token,
- * then glitches the verdict in (decision + TEE-attested + signed-by + rationale). Hidden before
- * analysis and after the chain is severed.
+ * The centerpiece Venice-TEE console — a sealed-enclave "hacker terminal". Four governance lenses
+ * report their verdicts into a committee grid, then the coordinator's synthesis pass types its
+ * reasoning token-by-token and glitches the final verdict in (decision + TEE-attested + signed-by +
+ * rationale). Hidden before analysis and after the chain is severed.
  */
 export function TeeConsole({
   venice,
   status,
   stageIdx,
+  lenses,
   killed,
   t,
 }: {
   venice: RunStatus['venice'];
   status?: string;
   stageIdx?: number; // when set (center console), gate on the chain's staged reveal, not raw status
+  lenses?: RunStatus['lenses'];
   killed: boolean;
   t: Dict;
 }) {
@@ -35,10 +37,10 @@ export function TeeConsole({
   const active = stageIdx !== undefined ? stageIdx >= aIdx : decided || status === 'analyzing';
   const full = (venice?.reasoning && venice.reasoning.trim()) || t.teeFallbackReasoning;
   const model = venice?.model ?? 'venice/llama-3.3-70b';
-  // Always type token-by-token while active; the verdict crystallizes once the stream completes.
-  const { text, typing } = useTeeStream(full, !active || killed ? 'off' : 'type');
-  // Once the reasoning finishes, the rationale types out too (the verdict's own little reveal).
-  const ratPlay = !active || killed || !decided || !venice || typing ? 'off' : 'type';
+  // The committee cards fill in first (during analyzing); the synthesis reasoning types once the
+  // coordinator has decided.
+  const { text, typing } = useTeeStream(full, decided && !killed ? 'type' : 'off');
+  const ratPlay = !decided || killed || !venice || typing ? 'off' : 'type';
   const { text: ratText, typing: ratTyping } = useTeeStream(venice?.rationale ?? '', ratPlay);
 
   if (!active || killed) return null;
@@ -64,10 +66,48 @@ export function TeeConsole({
         </div>
 
         <div className="px-4 py-3.5">
-          <div className="tee-boot mb-2.5 font-mono text-[11px] text-info/75">[venice-tdx] sealed channel established · {model}</div>
-          <div className="min-h-[54px] whitespace-pre-wrap break-words font-mono text-[12.5px] leading-[1.65] text-[#8fb6ef]">
-            {text}
-            {typing && <TeeCursor />}
+          {/* committee — the four governance lenses report their verdicts */}
+          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-info/70">
+            <Sparkles className="size-3" /> {t.teeCommittee}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {LENSES.map((lens) => {
+              const v = lenses?.find((l) => l.lens === lens.key);
+              const vt = v ? decisionColor(v.decision) : undefined;
+              return (
+                <div key={lens.key} className="tee-lens rounded-md border border-info/15 bg-info/[0.04] px-2.5 py-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[11px] font-semibold text-[#a9c6f5]">{t.presets[lens.key]}</span>
+                    {v ? (
+                      <span
+                        className="shrink-0 rounded-chip px-1.5 py-0.5 text-[9.5px] font-bold"
+                        style={{ border: `1px solid ${vt}66`, background: `${vt}1f`, color: vt }}
+                      >
+                        {v.decision}
+                      </span>
+                    ) : (
+                      <span className="shrink-0 font-mono text-[11px] text-info/50">···</span>
+                    )}
+                  </div>
+                  {v?.rationale && <div className="mt-1 truncate text-[10.5px] leading-snug text-ink-mute">{v.rationale}</div>}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* synthesis — the coordinator weighs the four and decides */}
+          <div className="tee-boot mb-2 mt-3 font-mono text-[11px] text-info/75">
+            [venice-tdx] {decided ? `synthesis · ${model}` : t.teeSynthesizing}
+          </div>
+          <div className="min-h-[44px] whitespace-pre-wrap break-words font-mono text-[12.5px] leading-[1.65] text-[#8fb6ef]">
+            {decided ? (
+              <>
+                {text}
+                {typing && <TeeCursor />}
+              </>
+            ) : (
+              <span className="text-info/40">…</span>
+            )}
           </div>
 
           {showVerdict && venice && (

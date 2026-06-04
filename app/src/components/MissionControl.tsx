@@ -173,7 +173,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
           />
         </div>
 
-        <TeeConsole venice={vm.venice} status={vm.s} stageIdx={revealIdx} killed={vm.killed} t={t} />
+        <TeeConsole venice={vm.venice} status={vm.s} stageIdx={revealIdx} lenses={vm.lenses} killed={vm.killed} t={t} />
 
         <ScopeBlock vm={vm} />
 

@@ -102,6 +102,8 @@ const en = {
   capOneShot: 'mainnet relay · instant',
   thinking: 'thinking…',
   teeConsoleTitle: 'Sealed enclave · Intel TDX',
+  teeCommittee: 'committee · 4 lenses',
+  teeSynthesizing: 'awaiting committee verdicts…',
   teeFallbackReasoning:
     'Reading the proposal inside the sealed enclave. Weighing alignment, risk, cost and accountability. The public monthly milestone reports, the 2-of-3 multisig release and the unspent-funds clawback materially de-risk the spend. Reaching a verdict…',
   authority: 'Agent authority',
@@ -320,6 +322,8 @@ const zh: Dict = {
   capOneShot: '主网中继 · 即时',
   thinking: '思考中…',
   teeConsoleTitle: '密封飞地 · Intel TDX',
+  teeCommittee: '委员会 · 四视角',
+  teeSynthesizing: '等待四方意见…',
   teeFallbackReasoning:
     '在密封飞地内读取提案。权衡一致性、风险、成本与问责。每月公开里程碑报告、2/3 多签放款与未用资金追回条款显著降低了支出风险。正在得出结论……',
   authority: 'AI 权限',
