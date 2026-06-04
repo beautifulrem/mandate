@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
-import { useReducedMotion } from 'motion/react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { animate, useReducedMotion } from 'motion/react';
 import { createPublicClient, erc20Abi, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
-import { AlertTriangle, Coins, Database, Receipt, ShieldCheck, Wallet } from 'lucide-react';
+import { AlertTriangle, Bot, Coins, Receipt, Scale, ShieldCheck, User, Wallet } from 'lucide-react';
 import { BASESCAN, RPC_URL, shortHex } from '../lib/config';
 import { cn } from '../lib/cn';
 import type { RunStatus } from '@mandate/shared';
@@ -19,6 +19,124 @@ function Row({ k, v }: { k: string; v: ReactNode }) {
     <div className="flex gap-3">
       <span className="w-16 shrink-0 text-ink-mute">{k}</span>
       <span className="min-w-0 break-all text-ink-soft">{v}</span>
+    </div>
+  );
+}
+
+/** A mini replica of the cockpit's authority graph for the popover: circular 你→编排器→终裁 nodes
+ *  joined by a dashed beam, with a spinning gold coin that loops the path while tracing/settling and
+ *  cyan AI-data squares streaming back — so the popover speaks the same visual language as the graph. */
+function MiniPaymentDiagram({ cap, spent, playing, delivered, t }: { cap?: number; spent: number; playing: boolean; delivered: boolean; t: Dict }) {
+  const reduce = useReducedMotion();
+  const wrap = useRef<HTMLDivElement>(null);
+  const n0 = useRef<HTMLDivElement>(null);
+  const n1 = useRef<HTMLDivElement>(null);
+  const n2 = useRef<HTMLDivElement>(null);
+  const coin = useRef<HTMLDivElement>(null);
+  const [g, setG] = useState<{ p: { x: number; y: number }[]; w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    const compute = () => {
+      if (!wrap.current || !n0.current || !n1.current || !n2.current) return;
+      const cr = wrap.current.getBoundingClientRect();
+      const c = (n: HTMLDivElement) => {
+        const r = n.getBoundingClientRect();
+        return { x: r.left - cr.left + r.width / 2, y: r.top - cr.top + r.height / 2 };
+      };
+      setG({ p: [c(n0.current), c(n1.current), c(n2.current)], w: cr.width, h: cr.height });
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    if (wrap.current) ro.observe(wrap.current);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = coin.current;
+    if (!g || !el || reduce) return;
+    if (!playing) {
+      el.style.opacity = '0';
+      return;
+    }
+    const [a, b, d] = g.p;
+    const l1 = Math.hypot(b.x - a.x, b.y - a.y);
+    const l2 = Math.hypot(d.x - b.x, d.y - b.y);
+    const total = l1 + l2 || 1;
+    const at = (pr: number) => {
+      const dd = pr * total;
+      if (dd <= l1) {
+        const u = l1 ? dd / l1 : 0;
+        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u };
+      }
+      const u = l2 ? (dd - l1) / l2 : 0;
+      return { x: b.x + (d.x - b.x) * u, y: b.y + (d.y - b.y) * u };
+    };
+    const controls = animate(0, 1, {
+      duration: 1.7,
+      ease: 'linear',
+      repeat: Infinity,
+      onUpdate: (pr) => {
+        const pt = at(pr);
+        el.style.transform = `translate3d(${pt.x - 9}px, ${pt.y - 9}px, 0)`;
+        el.style.opacity = pr < 0.06 || pr > 0.94 ? '0' : '1';
+      },
+    });
+    return () => controls.stop();
+  }, [g, playing, reduce]);
+
+  const nodes = [
+    { ref: n0, icon: User, label: t.x402.buyerYou, tone: '#ffd470' },
+    { ref: n1, icon: Bot, label: t.nodes.orch.who, tone: 'var(--color-brand)' },
+    { ref: n2, icon: Scale, label: t.nodes.synthesis.who, tone: '#ffd470' },
+  ];
+  const beamPath = g ? `M ${g.p[0].x} ${g.p[0].y} L ${g.p[1].x} ${g.p[1].y} L ${g.p[2].x} ${g.p[2].y}` : '';
+  return (
+    <div ref={wrap} className="relative mt-4 rounded-xl border border-ok/20 bg-surface-2/40 px-2 pb-5 pt-3" style={{ height: 104 }}>
+      {g && (
+        <svg className="pointer-events-none absolute inset-0" width={g.w} height={g.h} style={{ overflow: 'visible' }} aria-hidden>
+          <path className="beam-base" d={beamPath} />
+          {playing && <path className="beam-pulse" d={beamPath} stroke="#ffd470" style={{ color: '#ffd470' }} />}
+        </svg>
+      )}
+      <div className="relative flex items-start justify-between px-2">
+        {nodes.map((n, i) => (
+          <div key={i} className="flex w-16 flex-col items-center gap-1 text-center">
+            <div
+              ref={n.ref}
+              className="grid size-8 place-items-center rounded-full border"
+              style={{ borderColor: n.tone, color: n.tone, background: 'rgba(20,25,37,.6)', boxShadow: `0 0 0 4px color-mix(in srgb, ${n.tone} 12%, transparent)` }}
+            >
+              <n.icon className="size-4" />
+            </div>
+            <span className="text-[10px] font-semibold text-ink-soft">{n.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="absolute inset-x-0 bottom-1.5 text-center font-mono text-[9.5px] text-ink-mute">
+        Erc20TransferAmount · {spent}/{cap ?? '∞'} {t.x402.spent} (≤ {cap ?? '∞'} {TOLL_SYMBOL})
+      </div>
+      <div ref={coin} className="pay-coin" style={{ opacity: 0 }}>
+        <div className="pay-coin-face" />
+      </div>
+      {g &&
+        delivered &&
+        !reduce &&
+        [0, 1, 2, 3].map((i) => (
+          <span
+            key={`d-${i}`}
+            className="data-packet"
+            style={
+              {
+                left: g.p[2].x,
+                top: g.p[2].y,
+                '--dx': `${g.p[0].x - g.p[2].x}px`,
+                '--dy': `${g.p[0].y - g.p[2].y}px`,
+                animationDelay: `${i * 0.18}s`,
+                animationIterationCount: 'infinite',
+              } as CSSProperties
+            }
+          />
+        ))}
     </div>
   );
 }
@@ -97,30 +215,8 @@ export function X402TollGate({
       />
       <p className="text-[13px] leading-relaxed text-ink-soft">{t.x402.hint}</p>
 
-      {/* payment FLOW-DIAGRAM — who pays whom, and how much of the cumulative budget is spent */}
-      <div className="mt-4 flex items-center gap-3 rounded-xl border border-ok/20 bg-surface-2/50 px-3 py-3">
-        <div className="flex flex-col items-center gap-1 text-center">
-          <span className="grid size-9 place-items-center rounded-full border border-ok/40 bg-ok/10 text-ok">
-            <Wallet className="size-4" />
-          </span>
-          <span className="text-[10.5px] font-semibold text-ink-soft">{t.x402.buyerYou}</span>
-        </div>
-        <div className="relative flex-1 self-start pt-4">
-          <div className="h-px w-full bg-gradient-to-r from-ok/40 to-info/40" />
-          <span className="absolute inset-x-0 top-0 text-center text-[9.5px] text-ink-mute">
-            Erc20TransferAmount · ≤ {cap ?? '∞'} {TOLL_SYMBOL}
-          </span>
-          <span className="absolute inset-x-0 top-[18px] text-center font-mono text-[9.5px] text-ok">
-            {queryCount}/{cap ?? '∞'} {t.x402.spent}
-          </span>
-        </div>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <span className="grid size-9 place-items-center rounded-full border border-info/40 bg-info/10 text-info">
-            <Database className="size-4" />
-          </span>
-          <span className="text-[10.5px] font-semibold text-ink-soft">{t.x402.seller}</span>
-        </div>
-      </div>
+      {/* payment FLOW — a mini replica of the cockpit authority graph (你→编排器→终裁), animated */}
+      <MiniPaymentDiagram cap={cap} spent={queryCount} playing={tracing || !!toll} delivered={!!toll || phaseStep >= 3} t={t} />
 
       {/* the real 402 challenge */}
       <div className="mt-4 overflow-hidden rounded-xl border border-warn/25 bg-[#0e0b06]/70">
