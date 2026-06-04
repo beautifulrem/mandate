@@ -1,22 +1,39 @@
 /**
- * The orchestrator's autonomous loop for one grant: attenuated-redelegate (standing) to the analyst,
- * then have the analyst decide in the Venice TEE and cast. The standing chain (root + signed
- * redelegation) is cached per runId, so the SAME grant can vote on FURTHER proposals with NO new
- * user signature — the on-chain LimitedCalls + Timestamp caveats (and a revoke) are what bound/stop it.
+ * The orchestrator's autonomous loop for one grant. For each proposal it:
+ *   1. signs a FRESH per-proposal-narrowed redelegation (orchestrator → analyst) that LOCKS this
+ *      proposalId (support stays free) — real attenuation: the analyst only ever holds "vote on
+ *      THIS proposal", while the broad standing root stays with the orchestrator;
+ *   2. FANS OUT the proposal to the four governance lenses (fiscal / growth / security /
+ *      participation), each a private Venice TEE analysis under that mandate;
+ *   3. SYNTHESIZES the four verdicts into one final decision (the coordinator's TEE pass);
+ *   4. hands the narrowed chain + final support to the analyst (caster) to redeem on-chain.
+ *
+ * The standing root + the orchestrator smart account are cached per runId, so further proposals
+ * reuse them with NO new user signature — only the on-chain LimitedCalls + Timestamp caveats on the
+ * root (and a revoke) bound/stop it.
  */
 import { createPublicClient, createWalletClient, http, type Address, type Hex, type PublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
 import { getSmartAccountsEnvironment, Implementation, toMetaMaskSmartAccount } from '@metamask/smart-accounts-kit';
 import {
+  analyzeProposal,
   delegationHash,
   delegationManagerAddress,
-  redelegateStandingVote,
+  fetchAttestation,
+  LENSES,
+  redelegateVote,
+  resolveModel,
+  synthesizeVerdict,
+  toVeniceTrace,
+  withVotingPolicy,
   type Delegation,
   type GrantRequest,
+  type LensInput,
+  type LensVerdict,
   type VeniceConfig,
 } from '@mandate/shared';
-import { runAnalystVote } from '@mandate/analyst';
+import { castVote } from '@mandate/analyst';
 import type { RunStore } from './runStore.js';
 
 export interface OrchestratorConfig {
@@ -26,13 +43,15 @@ export interface OrchestratorConfig {
   veniceCfg: VeniceConfig;
 }
 
-/** The standing delegation chain for a grant, cached so further proposals reuse it (no re-sign). */
+type OrchSmartAccount = Awaited<ReturnType<typeof toMetaMaskSmartAccount>>;
+
+/** The standing chain for a grant: the broad root + the orchestrator SA that re-delegates from it.
+ *  Cached so further proposals reuse them (no re-sign); each proposal still gets a fresh narrow redel. */
 interface ChainBundle {
   root: Delegation;
-  redelSigned: Delegation;
+  orchSA: OrchSmartAccount;
   governor: Address;
   chainId: number;
-  redelegationHash: Hex;
 }
 const chains = new Map<string, ChainBundle>();
 
@@ -42,7 +61,9 @@ export function chainMeta(runId: string): { chainId: number; governor: Address }
   return b ? { chainId: b.chainId, governor: b.governor } : undefined;
 }
 
-/** Analyst decides in the Venice TEE and redeems the cached chain to cast `proposalId`. */
+/**
+ * One proposal, end-to-end: narrow → fan-out → synthesize → cast.
+ */
 async function cast(
   store: RunStore,
   runId: string,
@@ -53,18 +74,67 @@ async function cast(
 ): Promise<void> {
   const client = createPublicClient({ chain: baseSepolia, transport: http(cfg.rpcUrl) }) as PublicClient;
   const dm = delegationManagerAddress(bundle.chainId);
+  const environment = getSmartAccountsEnvironment(bundle.chainId);
   const analystEoa = privateKeyToAccount(cfg.analystPk);
+
+  // 1) PER-PROPOSAL NARROWING — sign a redel locked to THIS proposalId (support left free, so the
+  //    analyst can only cast on this one proposal; the broad "any proposal" power stays at the root).
+  const narrowRedel = redelegateVote({
+    governor: bundle.governor,
+    proposalId,
+    delegate: analystEoa.address,
+    delegator: bundle.orchSA.address,
+    environment,
+    parentDelegation: bundle.root,
+  });
+  const redelSigned = {
+    ...narrowRedel,
+    signature: (await bundle.orchSA.signDelegation({ delegation: narrowRedel })) as Hex,
+  } as Delegation;
+  store.patch(runId, { status: 'redelegated', redelegationHash: delegationHash(redelSigned, bundle.chainId, dm) });
+
+  // 2) FAN-OUT — four governance lenses in parallel (one private TEE analysis each, under its mandate).
+  //    Resolve the TEE model once and reuse it across all five completions (4 lenses + synthesis).
   store.patch(runId, { status: 'analyzing' });
-  const analystWallet = createWalletClient({ account: analystEoa, chain: baseSepolia, transport: http(cfg.rpcUrl) });
-  const result = await runAnalystVote(
-    { publicClient: client, analystWallet, analystAccount: analystEoa, delegationManager: dm, veniceCfg: cfg.veniceCfg },
-    { chain: [bundle.redelSigned, bundle.root], governor: bundle.governor, proposalId, proposalText },
+  const model = await resolveModel(cfg.veniceCfg);
+  const lensResults = await Promise.all(
+    LENSES.map(async (lens) => ({
+      lens,
+      analysis: await analyzeProposal(cfg.veniceCfg, withVotingPolicy(proposalText, lens.policy), model),
+    })),
   );
-  store.patch(runId, { status: 'decided', venice: result.trace });
-  store.patch(runId, { status: 'voted', vote: result.vote });
+  const lenses: LensVerdict[] = lensResults.map(({ lens, analysis }) => ({
+    lens: lens.key,
+    model: analysis.model,
+    support: analysis.decision.support,
+    decision: analysis.decision.decision,
+    rationale: analysis.decision.rationale,
+    reasoning: analysis.reasoning,
+    teeVerified: analysis.tee.verified,
+  }));
+  store.patch(runId, { lenses });
+
+  // 3) SYNTHESIS — the coordinator's TEE pass reads the four verdicts + the proposal → final decision.
+  const inputs: LensInput[] = lensResults.map(({ lens, analysis }) => ({
+    label: lens.label,
+    decision: analysis.decision.decision,
+    rationale: analysis.decision.rationale,
+  }));
+  const synthesis = await synthesizeVerdict(cfg.veniceCfg, proposalText, inputs, model);
+  const attestation = await fetchAttestation(cfg.veniceCfg, synthesis.model).catch(() => undefined);
+  store.patch(runId, { status: 'decided', venice: toVeniceTrace(synthesis, attestation), lenses });
+
+  // 4) CAST — the analyst (caster) pre-flights + broadcasts the synthesized support via the narrow chain.
+  store.patch(runId, { status: 'voting' });
+  const analystWallet = createWalletClient({ account: analystEoa, chain: baseSepolia, transport: http(cfg.rpcUrl) });
+  const vote = await castVote(
+    { publicClient: client, analystWallet, analystAccount: analystEoa, delegationManager: dm },
+    { chain: [redelSigned, bundle.root], governor: bundle.governor, proposalId, support: synthesis.decision.support },
+  );
+  store.patch(runId, { status: 'voted', vote });
 }
 
-/** Drive one grant end-to-end: redelegate (standing) → cache the chain → cast the first proposal. */
+/** Drive one grant end-to-end: cache the broad standing chain → cast the first proposal. */
 export async function runVote(
   store: RunStore,
   runId: string,
@@ -73,29 +143,20 @@ export async function runVote(
 ): Promise<void> {
   try {
     const client = createPublicClient({ chain: baseSepolia, transport: http(cfg.rpcUrl) }) as PublicClient;
-    const environment = getSmartAccountsEnvironment(grant.chainId);
-    const dm = delegationManagerAddress(grant.chainId);
     const orchEoa = privateKeyToAccount(cfg.orchestratorPk);
     const orchSA = await toMetaMaskSmartAccount({
-      client, implementation: Implementation.Hybrid,
-      deployParams: [orchEoa.address, [], [], []], deploySalt: '0x', signer: { account: orchEoa },
+      client,
+      implementation: Implementation.Hybrid,
+      deployParams: [orchEoa.address, [], [], []],
+      deploySalt: '0x',
+      signer: { account: orchEoa },
     });
-    const analystEoa = privateKeyToAccount(cfg.analystPk);
-    const governor = grant.governor as Address;
-    const root = grant.rootDelegation as unknown as Delegation;
-
-    // attenuated redelegation orchestrator → analyst (standing: same vote-only scope, any proposal)
-    const redel = redelegateStandingVote({
-      governor, delegate: analystEoa.address, delegator: orchSA.address, environment, parentDelegation: root,
-    });
-    const redelSigned = {
-      ...redel,
-      signature: (await orchSA.signDelegation({ delegation: redel })) as Hex,
-    } as Delegation;
-    const redelegationHash = delegationHash(redelSigned, grant.chainId, dm);
-    store.patch(runId, { status: 'redelegated', redelegationHash });
-
-    const bundle: ChainBundle = { root, redelSigned, governor, chainId: grant.chainId, redelegationHash };
+    const bundle: ChainBundle = {
+      root: grant.rootDelegation as unknown as Delegation,
+      orchSA,
+      governor: grant.governor as Address,
+      chainId: grant.chainId,
+    };
     chains.set(runId, bundle);
     await cast(store, runId, bundle, BigInt(grant.proposalId), grant.proposalText, cfg);
   } catch (err) {
@@ -106,9 +167,9 @@ export async function runVote(
   }
 }
 
-/** Vote again on a NEW proposal reusing the cached standing chain — NO new user signature.
- *  Reverts on-chain (→ run 'failed') if the grant is exhausted (LimitedCalls), expired
- *  (Timestamp), or revoked (disableDelegation) — which is exactly the kill-switch made visible. */
+/** Vote again on a NEW proposal reusing the cached standing chain — NO new user signature. A fresh
+ *  per-proposal narrow redel is signed each time. Reverts on-chain (→ run 'failed') if the grant is
+ *  exhausted (LimitedCalls), expired (Timestamp), or revoked (disableDelegation) — the kill switch. */
 export async function voteAgain(
   store: RunStore,
   fromRunId: string,
@@ -121,7 +182,6 @@ export async function voteAgain(
     const bundle = chains.get(fromRunId);
     if (!bundle) throw new Error(`no standing chain cached for run ${fromRunId}`);
     chains.set(newRunId, bundle); // re-votes can continue from the new run too
-    store.patch(newRunId, { status: 'redelegated', redelegationHash: bundle.redelegationHash });
     await cast(store, newRunId, bundle, proposalId, proposalText, cfg);
   } catch (err) {
     store.patch(newRunId, {

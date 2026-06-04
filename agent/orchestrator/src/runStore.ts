@@ -7,6 +7,7 @@ import type { Address, Hex } from 'viem';
 import {
   RunStatusSchema,
   type DelegationChain,
+  type LensVerdict,
   type RunError,
   type RunState,
   type RunStatus,
@@ -24,6 +25,7 @@ export interface CreateRunInput {
 export interface RunPatch {
   status?: RunState;
   redelegationHash?: Hex;
+  lenses?: LensVerdict[];
   venice?: VeniceTrace;
   vote?: VoteReceipt;
   revokeTxHash?: Hex;
@@ -67,6 +69,7 @@ export class RunStore {
       delegations: patch.redelegationHash
         ? { ...current.delegations, redelegationHash: patch.redelegationHash }
         : current.delegations,
+      ...(patch.lenses ? { lenses: patch.lenses } : {}),
       ...(patch.venice ? { venice: patch.venice } : {}),
       ...(patch.vote ? { vote: patch.vote } : {}),
       ...(patch.revokeTxHash ? { revokeTxHash: patch.revokeTxHash } : {}),
