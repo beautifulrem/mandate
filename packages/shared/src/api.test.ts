@@ -28,6 +28,14 @@ const grantFixture: GrantRequest = {
     salt: '0x3ade68b1',
     signature: '0x' + 'cd'.repeat(65),
   },
+  paymentDelegation: {
+    delegate: ANALYST,
+    delegator: USER,
+    authority: ROOT_AUTHORITY,
+    caveats: [{ enforcer: '0x7777777777777777777777777777777777777777', terms: '0xbeef', args: '0x' }],
+    salt: '0x3ade68b2',
+    signature: '0x' + 'ef'.repeat(65),
+  },
 };
 
 const statusFixture: RunStatus = {
@@ -69,6 +77,11 @@ describe('GrantRequestSchema', () => {
   it('rejects a root delegation missing its signature', () => {
     const { signature: _omit, ...unsigned } = grantFixture.rootDelegation;
     expect(GrantRequestSchema.safeParse({ ...grantFixture, rootDelegation: unsigned }).success).toBe(false);
+  });
+
+  it('rejects a grant missing the payment delegation', () => {
+    const { paymentDelegation: _omit, ...without } = grantFixture;
+    expect(GrantRequestSchema.safeParse(without).success).toBe(false);
   });
 });
 

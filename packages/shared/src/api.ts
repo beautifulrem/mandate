@@ -69,6 +69,9 @@ export const GrantRequestSchema = z.object({
   /** the proposal text the analyst should privately evaluate. */
   proposalText: z.string().min(1),
   rootDelegation: DelegationSchema,
+  /** the user-signed CUMULATIVE x402 payment delegation (userSA -> data-feed seller): an
+   *  Erc20TransferAmount cap the seller redeems once per vote, up to maxVotes x 1 mUSDC. */
+  paymentDelegation: DelegationSchema,
 });
 export type GrantRequest = z.infer<typeof GrantRequestSchema>;
 
@@ -148,18 +151,18 @@ export const VoteReceiptSchema = z.object({
 export type VoteReceipt = z.infer<typeof VoteReceiptSchema>;
 
 /** A REAL x402 pay-per-query settlement: the analyst's context feed (seller) pulled the toll from the
- *  orchestrator (buyer) via a scoped ERC-7710 Erc20TransferAmount delegation, on-chain, for THIS query. */
+ *  user's smart account (buyer) via a scoped ERC-7710 Erc20TransferAmount delegation, on-chain, for THIS query. */
 export const TollReceiptSchema = z.object({
   txHash: Bytes32Schema,
-  /** the toll token (MVOTE). */
+  /** the toll token (mUSDC). */
   asset: AddressSchema,
-  /** the buyer the toll was pulled FROM (orchestrator SA). */
+  /** the buyer the toll was pulled FROM (the user's smart account). */
   buyer: AddressSchema,
   /** the seller the toll was paid TO (analyst / context feed). */
   seller: AddressSchema,
   /** the toll charged for this query, in atoms. */
   amount: UintStringSchema,
-  /** the seller's MVOTE balance AFTER this settlement, in atoms — the live, on-chain proof. */
+  /** the seller's mUSDC balance AFTER this settlement, in atoms — the live, on-chain proof. */
   sellerBalance: UintStringSchema,
   /** the priced resource, e.g. /context/proposal-<id>. */
   resource: z.string(),
