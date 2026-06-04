@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { Bot, Boxes, Coins, ExternalLink, Lock, Scale, Scissors, ShieldCheck, TrendingUp, User, Users, type LucideIcon } from 'lucide-react';
-import { LENSES, type LensKey, type LensVerdict } from '@mandate/shared';
+import { LENSES, type Decision, type LensKey, type LensVerdict } from '@mandate/shared';
 import { BASESCAN, shortHex } from '../../lib/config';
 import { ORDER } from '../../lib/runState';
 import { useRatchet } from '../../lib/useRatchet';
@@ -40,18 +40,51 @@ interface ChainNodeProps {
   /** float the label/verdict/addr absolutely below the circle, so the node's height == the circle
    *  and align-items:center lines ALL the main-node circles up (regardless of how much hangs below). */
   floatBelow?: boolean;
-  verdict?: { label: string; tone: string } | null;
+  /** When set, colors the circle (ring + glow + icon) by decision result. Keeps cold-blue "thinking" state when absent. */
+  result?: Decision;
   pips?: Pips;
 }
 
-function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, tee, thinking, killed, board, small, floatBelow, verdict, pips }: ChainNodeProps) {
-  // the four lenses are TEE analyses → render them cold (info blue); the authority spine stays brand
-  // orange and the board stays on-chain green, so the eye reads "blue committee → hot verdict".
-  const accent = board ? 'var(--color-ok)' : small ? 'var(--color-info)' : 'var(--color-brand)';
+function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, tee, thinking, killed, board, small, floatBelow, result, pips }: ChainNodeProps) {
+  // the four lenses + the final Arbiter (终裁 / caster) color their circles by result once decided.
+  // "thinking" state for lenses stays cold info-blue until the verdict arrives.
+  const resultTone = result ? decisionColor(result) : undefined;
+  const accent = board ? 'var(--color-ok)' : resultTone ? resultTone : small ? 'var(--color-info)' : 'var(--color-brand)';
   const ringActive = !!active && !killed;
-  const ringColor = board ? 'rgba(74,222,128,.55)' : small ? 'rgba(110,168,254,.5)' : 'rgba(246,133,27,.5)';
-  const ringBg = board ? 'rgba(74,222,128,.12)' : small ? 'rgba(110,168,254,.13)' : 'rgba(246,133,27,.15)';
-  const glowRing = board ? 'rgba(74,222,128,.06)' : small ? 'rgba(110,168,254,.07)' : 'rgba(246,133,27,.06)';
+  // result rings use matching alpha tints (green/red/amber) so the decided nodes pop in the graph
+  const ringColor = board
+    ? 'rgba(74,222,128,.55)'
+    : result === 'For'
+    ? 'rgba(74,222,128,.55)'
+    : result === 'Against'
+    ? 'rgba(248,113,113,.55)'
+    : result === 'Abstain'
+    ? 'rgba(251,191,36,.55)'
+    : small
+    ? 'rgba(110,168,254,.5)'
+    : 'rgba(246,133,27,.5)';
+  const ringBg = board
+    ? 'rgba(74,222,128,.12)'
+    : result === 'For'
+    ? 'rgba(74,222,128,.12)'
+    : result === 'Against'
+    ? 'rgba(248,113,113,.12)'
+    : result === 'Abstain'
+    ? 'rgba(251,191,36,.13)'
+    : small
+    ? 'rgba(110,168,254,.13)'
+    : 'rgba(246,133,27,.15)';
+  const glowRing = board
+    ? 'rgba(74,222,128,.06)'
+    : result === 'For'
+    ? 'rgba(74,222,128,.06)'
+    : result === 'Against'
+    ? 'rgba(248,113,113,.06)'
+    : result === 'Abstain'
+    ? 'rgba(251,191,36,.07)'
+    : small
+    ? 'rgba(110,168,254,.07)'
+    : 'rgba(246,133,27,.06)';
   const size = small ? 38 : 60;
   return (
     <div
@@ -84,6 +117,8 @@ function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, tee,
           transition: 'all .3s',
           animation: working && !killed ? 'glow 2.8s ease-in-out infinite' : 'none',
         }}
+        title={result ? `${who}: ${result}` : who}
+        aria-label={result ? `${who} ${result}` : who}
       >
         <Icon size={small ? 16 : 24} strokeWidth={1.5} />
       </span>
@@ -93,27 +128,9 @@ function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, tee,
       </div>
       {role && <div style={{ marginTop: 2, fontSize: 12, color: 'var(--color-ink-mute)' }}>{role}</div>}
 
-      {verdict && !killed && (
-        <span
-          className="mc-verdict-pop"
-          style={{
-            marginTop: 6,
-            display: 'inline-flex',
-            alignItems: 'center',
-            borderRadius: 999,
-            padding: '2px 9px',
-            fontSize: 10.5,
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            border: `1px solid ${verdict.tone}66`,
-            background: `${verdict.tone}1f`,
-            color: verdict.tone,
-          }}
-        >
-          {verdict.label}
-        </span>
-      )}
-      {tee && !verdict && !killed && (
+      {/* verdict pills intentionally removed from graph nodes; circles are colored by result (see above).
+          The TeeConsole committee cards + synth verdict row continue to show explicit "For"/"Against" text. */}
+      {tee && !result && !killed && (
         <div
           className="mc-thinking"
           style={{
@@ -323,7 +340,7 @@ function ScopeChip({
     };
   }, [container, youRef, orchRef, synthRef]);
   if (!xs) return null;
-  // The scope token (the delegation) rides You → Orchestrator → Synthesis (the cast point); the four
+  // The scope token (the delegation) rides You → Orchestrator → Arbiter/终裁 (the cast point); the four
   // lenses are decision agents, not delegation hops, so the token floats over them.
   const x = xs[pos];
   return (
@@ -359,11 +376,11 @@ export interface ChainParties {
 }
 
 /**
- * The live authority graph: You → Orchestrator → (four governance lenses) → Synthesis → VoteBoard.
+ * The live authority graph: You → Orchestrator → (four governance lenses) → Arbiter (终裁) → VoteBoard.
  * The orchestrator fans the proposal out to four specialist lenses (each a private TEE analysis),
- * which report a verdict in sequence; the Synthesis node weighs them into the final vote. Beams light
- * + a permission packet travels as the run advances; the scope token rides You→Orch→Synthesis (the
- * lenses are decision agents, not delegation hops); Recall snips the root and the cables recoil.
+ * which report a verdict in sequence; the Arbiter (终裁) node weighs them and its decision is what
+ * gets cast on-chain. Beams light + a permission packet travels as the run advances; the scope token
+ * rides You→Orch→Arbiter (the lenses are decision agents, not delegation hops); Recall snips the root.
  */
 export function AuthorityChain({
   t,
@@ -410,7 +427,7 @@ export function AuthorityChain({
   const synthWorking = nodeLit('decided') && shownIdx < idxOf('voting'); // lit, finalizing the vote
   const verdictFor = (key: LensKey) => lenses?.find((l) => l.lens === key);
 
-  // The scope token rides You → Orchestrator → Synthesis (the per-proposal narrowed cast point).
+  // The scope token rides You → Orchestrator → Arbiter/终裁 (the per-proposal narrowed cast point).
   const chipPos: 'you' | 'orch' | 'synth' = beamLive('decided') ? 'synth' : beamLive('redelegated') ? 'orch' : 'you';
   const chipLabel = chipPos === 'synth' ? t.scopeChipAttenuated : chipPos === 'orch' ? t.scopeChip : t.scopeChipOrigin;
 
@@ -419,7 +436,7 @@ export function AuthorityChain({
       <ChainNode nodeRef={youRef} icon={User} who={t.nodes.you.who} role={t.nodes.you.role} addr={parties.you} active={connected} floatBelow killed={killed} />
       <ChainNode nodeRef={orchRef} icon={Bot} who={t.nodes.orch.who} role={t.nodes.orch.role} addr={parties.orch} active={nodeLit('redelegated')} working={orchWorking} floatBelow killed={killed} />
 
-      {/* the four governance lenses (decision agents), stacked between the orchestrator and synthesis */}
+      {/* the four governance lenses (decision agents), stacked between the orchestrator and arbiter/终裁 */}
       <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', alignSelf: 'center' }}>
         {LENSES.map((lens, i) => {
           const lit = lensLit >= i;
@@ -434,7 +451,7 @@ export function AuthorityChain({
               working={lit && !v}
               tee={lit && !v}
               thinking={t.thinking}
-              verdict={lit && v ? { label: v.decision, tone: decisionColor(v.decision) } : null}
+              result={v ? v.decision : undefined}
               killed={killed}
               small
             />
@@ -450,13 +467,13 @@ export function AuthorityChain({
         addr={parties.analyst}
         active={nodeLit('decided')}
         working={synthWorking}
-        verdict={nodeLit('decided') && synthDecision ? { label: synthDecision, tone: decisionColor(synthDecision) } : null}
+        result={nodeLit('decided') && synthDecision ? (synthDecision as Decision) : undefined}
         floatBelow
         killed={killed}
       />
       <ChainNode nodeRef={boardRef} icon={Boxes} who={t.nodes.board.who} role={t.nodes.board.role} addr={parties.board} active={connected} board floatBelow pips={pips} />
 
-      {/* You → Orchestrator (root), then fan-out to the lenses, fan-in to Synthesis, then to the board */}
+      {/* You → Orchestrator (root), then fan-out to the lenses, fan-in to Arbiter (终裁), then to the board */}
       <Beam container={containerRef} from={youRef} to={orchRef} live={beamLive('redelegated')} killed={killed} cutting={cutting} root />
       {LENSES.map((lens, i) => (
         <Beam key={`out-${lens.key}`} container={containerRef} from={orchRef} to={lensRefs[i]} live={beamLive('analyzing')} killed={killed} cutting={cutting} />

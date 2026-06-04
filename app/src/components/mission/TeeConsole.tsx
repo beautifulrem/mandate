@@ -1,8 +1,9 @@
 'use client';
 
-import { LENSES, type RunStatus } from '@mandate/shared';
-import { BadgeCheck, FileSignature, Lock, Sparkles } from 'lucide-react';
-import { shortHex } from '../../lib/config';
+import { useState } from 'react';
+import { LENSES, type LensKey, type RunStatus } from '@mandate/shared';
+import { BadgeCheck, FileSignature, Lock, Sparkles, X } from 'lucide-react';
+import { BASESCAN, shortHex } from '../../lib/config';
 import { ORDER } from '../../lib/runState';
 import type { Dict } from '../../lib/i18n';
 import { Badge } from '../ui/Badge';
@@ -10,9 +11,9 @@ import { decisionColor, TeeCursor, useTeeStream } from './teeStream';
 
 /**
  * The centerpiece Venice-TEE console — a sealed-enclave "hacker terminal". Four governance lenses
- * report their verdicts into a committee grid, then the coordinator's synthesis pass types its
- * reasoning token-by-token and glitches the final verdict in (decision + TEE-attested + signed-by +
- * rationale). Hidden before analysis and after the chain is severed.
+ * (clickable cards) report verdicts; click reveals full per-lens detail (model + reasoning + teeVerified + rationale)
+ * in a sealed sub-frame. The final arbiter (终裁) synthesizes, types reasoning, then shows TEE-attested badge
+ * (click for Intel TDX / nonce bubble) + clickable signing-address to explorer. Hidden before analysis / after kill.
  */
 export function TeeConsole({
   venice,
@@ -43,6 +44,10 @@ export function TeeConsole({
   const ratPlay = !decided || killed || !venice || typing ? 'off' : 'type';
   const { text: ratText, typing: ratTyping } = useTeeStream(venice?.rationale ?? '', ratPlay);
 
+  // Local selection for per-lens full detail (click a committee card) + attestation explain bubble
+  const [selectedLens, setSelectedLens] = useState<LensKey | null>(null);
+  const [attestOpen, setAttestOpen] = useState(false);
+
   if (!active || killed) return null;
   const showVerdict = decided && !!venice && !typing;
   const tone = decisionColor(venice?.decision);
@@ -66,7 +71,7 @@ export function TeeConsole({
         </div>
 
         <div className="px-3.5 py-2.5">
-          {/* committee — the four governance lenses report their verdicts */}
+          {/* committee — the four governance lenses report their verdicts. Click a card to reveal full model+reasoning+TEE-verified in sealed frame below. */}
           <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-info/70">
             <Sparkles className="size-3" /> {t.teeCommittee}
           </div>
@@ -74,8 +79,29 @@ export function TeeConsole({
             {LENSES.map((lens) => {
               const v = lenses?.find((l) => l.lens === lens.key);
               const vt = v ? decisionColor(v.decision) : undefined;
+              const isSel = selectedLens === lens.key;
+              const clickable = !!v; // only a lens that has reported its verdict has detail to open
+              const toggle = () => setSelectedLens(isSel ? null : lens.key);
               return (
-                <div key={lens.key} className="tee-lens rounded-md border border-info/15 bg-info/[0.04] px-2.5 py-1.5">
+                <div
+                  key={lens.key}
+                  role={clickable ? 'button' : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  onClick={clickable ? toggle : undefined}
+                  onKeyDown={
+                    clickable
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggle();
+                          }
+                        }
+                      : undefined
+                  }
+                  className={`tee-lens rounded-md border border-info/15 bg-info/[0.04] px-2.5 py-1.5 transition-all ${clickable ? 'cursor-pointer' : ''} ${isSel ? 'ring-1 ring-info/60 ring-offset-1 ring-offset-[#070b14]' : clickable ? 'hover:border-info/30' : ''}`}
+                  aria-pressed={clickable ? isSel : undefined}
+                  aria-label={clickable ? `${t.presets[lens.key]} — ${t.teeLensMore}` : undefined}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-[11px] font-semibold text-[#a9c6f5]">{t.presets[lens.key]}</span>
                     {v ? (
@@ -95,9 +121,43 @@ export function TeeConsole({
             })}
           </div>
 
-          {/* synthesis — the coordinator weighs the four and decides */}
+          {/* selected lens full detail — styled as sealed-enclave sub-frame (model + full reasoning + teeVerified + rationale) */}
+          {selectedLens && (() => {
+            const v = lenses?.find((l) => l.lens === selectedLens);
+            if (!v) return null;
+            const vt = decisionColor(v.decision);
+            return (
+              <div className="mt-2 rounded-md border border-info/20 bg-info/[0.025] p-2.5 text-[11px]">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 font-mono text-info/80">
+                    <Lock size={11} /> {t.presets[selectedLens]} · {v.model} · TEE:{v.teeVerified ? '✓' : '—'}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLens(null)}
+                    className="bg-none p-0 font-normal text-ink-mute shadow-none hover:text-ink"
+                    aria-label="Close lens detail"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-ink-mute">decision:</span>
+                  <span className="rounded-chip px-1.5 py-px text-[10px] font-bold" style={{ border: `1px solid ${vt}66`, background: `${vt}1f`, color: vt }}>{v.decision}</span>
+                </div>
+                {v.reasoning && (
+                  <div className="mt-1 max-h-20 overflow-auto whitespace-pre-wrap break-words font-mono text-[#8fb6ef] hud-scroll">{v.reasoning}</div>
+                )}
+                {v.rationale && (
+                  <div className="mt-1.5 text-[12px] italic text-ink-soft">“{v.rationale}”</div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* final arbiter / 终裁 — the coordinator weighs the four lenses and decides (this decision is cast on-chain) */}
           <div className="tee-boot mb-1.5 mt-2.5 font-mono text-[11px] text-info/75">
-            [venice-tdx] {decided ? `synthesis · ${model}` : t.teeSynthesizing}
+            [venice-tdx] {decided ? `arbiter · ${model}` : t.teeSynthesizing}
           </div>
           <div className="tee-synth hud-scroll min-h-[34px] max-h-[92px] overflow-y-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.5] text-[#8fb6ef]">
             {decided ? (
@@ -124,16 +184,51 @@ export function TeeConsole({
                   {venice.decision}
                 </span>
                 {venice.attestation?.verified && (
-                  <Badge tone="ok">
-                    <BadgeCheck className="size-3" /> {t.teeAttested}
-                  </Badge>
+                  <button
+                    type="button"
+                    onClick={() => setAttestOpen((s) => !s)}
+                    className="cursor-pointer rounded-chip bg-none p-0 font-normal shadow-none"
+                    aria-expanded={attestOpen}
+                    aria-controls="tee-attest-bubble"
+                    title={t.teeAttestExplain}
+                  >
+                    <Badge tone="ok">
+                      <BadgeCheck className="size-3" /> {t.teeAttested}
+                    </Badge>
+                  </button>
                 )}
                 {venice.signature?.recovered && venice.signature.signingAddress && (
-                  <Badge tone="info">
-                    <FileSignature className="size-3" /> {shortHex(venice.signature.signingAddress, 4)}
-                  </Badge>
+                  <a
+                    href={`${BASESCAN}/address/${venice.signature.signingAddress}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={venice.signature.signingAddress}
+                    className="no-underline hover:opacity-80"
+                  >
+                    <Badge tone="info">
+                      <FileSignature className="size-3" /> {shortHex(venice.signature.signingAddress, 4)}
+                    </Badge>
+                  </a>
                 )}
               </div>
+
+              {/* Attestation "bubble" (stacked compact card for dense cockpit; explains TDX + verified + nonce) */}
+              {attestOpen && venice?.attestation && (
+                <div
+                  id="tee-attest-bubble"
+                  className="mt-2 rounded border border-info/30 bg-[rgba(16,22,32,0.65)] p-2 text-[10px] leading-snug text-info/90"
+                >
+                  <div className="flex justify-between gap-2">
+                    <div>{t.teeAttestExplain}</div>
+                    <button type="button" onClick={() => setAttestOpen(false)} className="shrink-0 bg-none p-0 font-normal text-ink-mute shadow-none hover:text-ink">
+                      <X size={12} />
+                    </button>
+                  </div>
+                  {venice.attestation.nonce && (
+                    <div className="mt-1 font-mono text-ink-mute">nonce: {venice.attestation.nonce}</div>
+                  )}
+                </div>
+              )}
               {venice.rationale && (
                 <div className="tee-v-rat mt-2.5 text-[13px] italic text-ink-soft">
                   “{ratText}
