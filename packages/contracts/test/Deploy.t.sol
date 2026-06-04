@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {Deploy} from "../script/Deploy.s.sol";
 import {VotesToken} from "../src/VotesToken.sol";
 import {MandateGovernor} from "../src/MandateGovernor.sol";
+import {MockUSDC} from "../src/MockUSDC.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
 /// Proves the Deploy script's deploy + seed path locally, so the only thing the live
@@ -16,11 +17,15 @@ contract DeployScriptTest is Test {
         vm.setEnv("VOTER_ADDRESS", vm.toString(voter));
 
         Deploy deploy = new Deploy();
-        (VotesToken token, MandateGovernor governor) = deploy.run();
+        (VotesToken token, MandateGovernor governor, MockUSDC payment) = deploy.run();
 
         // voter is seeded + auto-self-delegated (the script's require() also asserts this)
         assertEq(token.getVotes(voter), 1000 ether);
         assertEq(token.delegates(voter), voter);
+
+        // the voter's smart account is also funded with a separate 6-decimal mUSDC x402 budget
+        assertEq(payment.decimals(), 6);
+        assertEq(payment.balanceOf(voter), 1000e6);
 
         // and that power is visible at a fresh proposal's snapshot
         address[] memory targets = new address[](1);
