@@ -286,6 +286,7 @@ function ScopeChip({
   icon: LucideIcon;
 }) {
   const [xs, setXs] = useState<{ you: number; orch: number; synth: number; board: number; topY: number } | null>(null);
+  const reduce = useReducedMotion();
   useEffect(() => {
     const compute = () => {
       if (!container.current || !youRef.current || !orchRef.current || !synthRef.current || !boardRef.current) return;
@@ -319,7 +320,7 @@ function ScopeChip({
   // It glides between the circle x-positions (left transition) while its icon+label morph in (keyed).
   const x = xs[pos];
   return (
-    <div style={{ position: 'absolute', left: x, top: xs.topY, transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'none', transition: 'left .85s var(--ease-fluid)' }}>
+    <div style={{ position: 'absolute', left: 0, top: xs.topY, transform: `translate(calc(${x}px - 50%), 0)`, zIndex: 3, pointerEvents: 'none', transition: reduce ? 'none' : 'transform .85s var(--ease-fluid)', willChange: 'transform' }}>
       <span
         style={{
           display: 'inline-flex',
