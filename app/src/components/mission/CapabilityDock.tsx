@@ -15,10 +15,10 @@ export function CapabilityDock({ t, onOpen, connected, revealIdx, killed }: { t:
   // chip pops + glows as it lights (see .mc-chip.met), so the proofs cascade instead of flipping at once.
   // Once the chain is severed they all go dark — the mandate (and its proofs) is dead.
   const met = [
-    { label: '4337', on: connected && !killed },
-    { label: '7710', on: revealIdx >= 0 && !killed },
-    { label: 'A2A', on: revealIdx >= 1 && !killed },
-    { label: 'TEE', on: revealIdx >= 2 && !killed },
+    { label: '4337', on: connected && !killed, tip: t.trackTips['4337'] },
+    { label: '7710', on: revealIdx >= 0 && !killed, tip: t.trackTips['7710'] },
+    { label: 'A2A', on: revealIdx >= 1 && !killed, tip: t.trackTips.A2A },
+    { label: 'TEE', on: revealIdx >= 2 && !killed, tip: t.trackTips.TEE },
   ];
   return (
     <div className="flex flex-col items-center gap-3.5">
@@ -50,9 +50,16 @@ export function CapabilityDock({ t, onOpen, connected, revealIdx, killed }: { t:
 
       <div className="mc-tracks">
         {met.map((m) => (
-          <span key={m.label} className={`mc-chip${m.on ? ' met' : ''}`}>
-            {m.on && <Check className="size-3" />}
-            {m.label}
+          // each chip carries a hover/focus bubble (reusing .mc-stance/.mc-stance-tip) that explains
+          // what the proof means — judges can read it without leaving the cockpit.
+          <span key={m.label} className="mc-stance" tabIndex={0}>
+            <span className={`mc-chip${m.on ? ' met' : ''}`}>
+              {m.on && <Check className="size-3" />}
+              {m.label}
+            </span>
+            <span className="mc-stance-tip" role="tooltip">
+              {m.tip}
+            </span>
           </span>
         ))}
       </div>
