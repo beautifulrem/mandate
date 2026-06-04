@@ -21,10 +21,11 @@ const MODES = [
 
 /**
  * The control cluster below the graph — the only thing the user drives. Pre-grant it surfaces the
- * voting-mandate stance presets, the trimmed scope sentence + on-chain-enforced chips, the bound
- * mode + vote/day steppers, and the primary CTA (Connect → Grant). Once granted it swaps to the live
- * mandate readout (MandateStats) + "let the agent vote" + Recall. Post-sever it keeps the vote
- * action live (so a fresh attempt visibly reverts on-chain) under the severed notice.
+ * trimmed scope sentence + on-chain-enforced chips, the bound mode + vote/day steppers, and the
+ * primary CTA (Connect → Grant). Once granted it swaps to the live mandate readout (MandateStats) +
+ * "let the agent vote" + Recall. Once SEVERED everything goes dead: the vote button is disabled,
+ * Recall is hidden, the enforced-scope chips drop away, and only the 0%-authority stats + the
+ * severed notice remain.
  */
 export function ScopeBlock({ vm }: { vm: MissionVM }) {
   const { t } = vm;
