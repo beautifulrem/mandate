@@ -19,6 +19,7 @@ import {
   DEMO_PROPOSAL_ID,
   VOTE_BOARD_ABI,
   VOTE_BOARD_ADDRESS,
+  buildPaymentDelegation,
   buildStandingVoteDelegation,
   type Delegation,
 } from '../src/index.js';
@@ -85,6 +86,16 @@ async function main() {
   const signature = (await sa.signDelegation({ delegation: root })) as Hex;
   const rootDelegation: Delegation = { ...root, signature };
 
+  // SECOND signature — the cumulative x402 budget (userSA -> analyst seller): at most 10 x 1 mUSDC.
+  const payment = buildPaymentDelegation({
+    buyer: sa.address,
+    seller: ADDRESSES.accounts.analyst as Address,
+    asset: ADDRESSES.baseSepolia.paymentToken as Address,
+    amount: 10n * 1_000_000n,
+    environment,
+  });
+  const paymentDelegation: Delegation = { ...payment, signature: (await sa.signDelegation({ delegation: payment })) as Hex };
+
   console.log('[4/5] POST /grant…');
   const { runId } = await fetch(`${ORCH}/grant`, {
     method: 'POST',
@@ -95,6 +106,7 @@ async function main() {
       proposalId: DEMO_PROPOSAL_ID.toString(),
       proposalText: PROPOSAL_TEXT,
       rootDelegation,
+      paymentDelegation,
     }),
   }).then((r) => r.json());
   console.log('        runId', runId);

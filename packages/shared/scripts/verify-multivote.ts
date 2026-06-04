@@ -8,7 +8,7 @@
  *
  *   FAUCET_PK=0x… ORCH=http://localhost:8787 pnpm tsx packages/shared/scripts/verify-multivote.ts
  */
-import { createPublicClient, http, type Address, type Hex } from 'viem';
+import { createPublicClient, erc20Abi, http, type Address, type Hex } from 'viem';
 import { createBundlerClient } from 'viem/account-abstraction';
 import { privateKeyToAccount } from 'viem/accounts';
 import { baseSepolia } from 'viem/chains';
@@ -17,6 +17,7 @@ import {
   ADDRESSES,
   PROPOSALS,
   VOTE_BOARD_ADDRESS,
+  buildPaymentDelegation,
   buildStandingVoteDelegation,
   delegationManagerAddress,
   revokeRootCalldata,
@@ -66,15 +67,28 @@ async function main() {
   });
   const rootSigned: Delegation = { ...root, signature: (await sa.signDelegation({ delegation: root })) as Hex };
 
+  // SECOND signature — the cumulative x402 budget (userSA -> analyst seller): at most maxVotes x 1 mUSDC.
+  const paymentToken = ADDRESSES.baseSepolia.paymentToken as Address;
+  const seller = ADDRESSES.accounts.analyst as Address;
+  const payment = buildPaymentDelegation({ buyer: sa.address, seller, asset: paymentToken, amount: 10n * 1_000_000n, environment });
+  const paymentSigned: Delegation = { ...payment, signature: (await sa.signDelegation({ delegation: payment })) as Hex };
+
+  const mUSDC = (who: Address) =>
+    client.readContract({ address: paymentToken, abi: erc20Abi, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+  const fmt = (n: bigint) => (Number(n) / 1e6).toFixed(2);
+  console.log(`   mUSDC before — buyerSA ${fmt(await mUSDC(sa.address))} · seller ${fmt(await mUSDC(seller))}`);
+
   console.log(`[2] /grant → vote on A (#${A.id.toString().slice(-3)})`);
   const { runId } = await post('/grant', {
-    chainId: 84532, governor: VOTE_BOARD_ADDRESS, proposalId: A.id.toString(), proposalText: A.body.en, rootDelegation: rootSigned,
+    chainId: 84532, governor: VOTE_BOARD_ADDRESS, proposalId: A.id.toString(), proposalText: A.body.en, rootDelegation: rootSigned, paymentDelegation: paymentSigned,
   });
   await pollRun(runId, 'vote A');
+  console.log(`   mUSDC after A — buyerSA ${fmt(await mUSDC(sa.address))} · seller ${fmt(await mUSDC(seller))}`);
 
   console.log(`[3] /vote-again → vote on B (#${B.id.toString().slice(-3)}) — NO new signature`);
   const { runId: runB } = await post('/vote-again', { runId, proposalId: B.id.toString(), proposalText: B.body.en });
   await pollRun(runB, 'vote B');
+  console.log(`   mUSDC after B — buyerSA ${fmt(await mUSDC(sa.address))} · seller ${fmt(await mUSDC(seller))}`);
 
   console.log('[4] revoke — disableDelegation on the root (UserOp from the SA)');
   const bundler = createBundlerClient({ client, transport: http(BUNDLER) });
