@@ -47,8 +47,6 @@ interface ChainNodeProps {
   addr?: string;
   active?: boolean;
   working?: boolean;
-  tee?: boolean;
-  thinking?: string;
   killed?: boolean;
   board?: boolean;
   small?: boolean;
@@ -62,7 +60,7 @@ interface ChainNodeProps {
   pips?: Pips;
 }
 
-function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, tee, thinking, killed, board, small, floatBelow, result, tone, pips }: ChainNodeProps) {
+function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, killed, board, small, floatBelow, result, tone, pips }: ChainNodeProps) {
   // One tone drives the whole circle (icon + ring + glow). Callers pass it explicitly: the lenses and
   // the Arbiter (终裁) by their verdict, the VoteBoard by the live tally (or brand once our vote lands).
   // You/Orchestrator default brand; a lens with no verdict yet stays cold info-blue.
@@ -115,30 +113,9 @@ function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, tee,
       </div>
       {role && <div style={{ marginTop: 2, fontSize: 12, color: 'var(--color-ink-mute)' }}>{role}</div>}
 
-      {/* verdict pills intentionally removed from graph nodes; circles are colored by `tone` (see above).
-          The TeeConsole committee cards + synth verdict row continue to show explicit "For"/"Against" text. */}
-      {tee && !killed && (
-        <div
-          className="mc-thinking"
-          style={{
-            margin: small ? '6px auto 0' : '8px auto 0',
-            maxWidth: 130,
-            display: 'flex',
-            height: small ? 18 : 22,
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            borderRadius: 6,
-            border: '1px dashed rgba(110,168,254,.45)',
-            background: 'rgba(110,168,254,.1)',
-            color: 'var(--color-info)',
-            fontSize: 10.5,
-            padding: '0 7px',
-          }}
-        >
-          <Lock size={11} /> {thinking}
-        </div>
-      )}
+      {/* No verdict pills and no "thinking…" box on graph nodes: a working node simply glows brand-orange
+          (the `working` pulse + brand tone), then its circle switches to the verdict color once the
+          decision lands — so nothing changes the node's height. The TeeConsole still shows the text. */}
       {addr && (
         <a
           href={`${BASESCAN}/address/${addr}`}
@@ -422,7 +399,9 @@ export function AuthorityChain({
   const lensLit = useRatchet(lensTarget, LENS_STAGGER_MS, killed);
 
   const orchWorking = nodeLit('redelegated') && !beamLive('analyzing'); // lit, holding the scope
-  const synthWorking = nodeLit('decided') && shownIdx < idxOf('voting'); // lit, finalizing the vote
+  // the Arbiter glows brand-orange while the committee's inputs converge on it (the fan-in is live but
+  // the verdict hasn't crystallized yet), then its circle switches to the decision color.
+  const synthThinking = beamLive('decided') && !nodeLit('decided');
   const verdictFor = (key: LensKey) => lenses?.find((l) => l.lens === key);
 
   // The scope token rides You → Orchestrator → Arbiter (cast point) → VoteBoard, its icon + label
@@ -465,10 +444,8 @@ export function AuthorityChain({
               who={t.presets[lens.key]}
               active={lit}
               working={lit && !v}
-              tee={lit && !v}
-              thinking={t.thinking}
               result={v ? v.decision : undefined}
-              tone={v ? decisionToneKey(v.decision) : 'info'}
+              tone={v ? decisionToneKey(v.decision) : 'brand'}
               killed={killed}
               small
             />
@@ -482,8 +459,8 @@ export function AuthorityChain({
         who={t.nodes.synthesis.who}
         role={t.nodes.synthesis.role}
         addr={parties.analyst}
-        active={nodeLit('decided')}
-        working={synthWorking}
+        active={beamLive('decided')}
+        working={synthThinking}
         result={nodeLit('decided') && synthDecision ? (synthDecision as Decision) : undefined}
         tone={nodeLit('decided') && synthDecision ? decisionToneKey(synthDecision) : 'brand'}
         floatBelow
