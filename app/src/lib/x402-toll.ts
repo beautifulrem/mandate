@@ -3,13 +3,15 @@ import type { Address } from 'viem';
 
 /**
  * x402 pay-per-query toll, settled with a SCOPED ERC-7710 Erc20TransferAmount delegation.
- * The analyst's context feed charges 1 MVOTE per query; the buyer signs a delegation that lets
+ * The analyst's context feed charges 1 mUSDC per query; the buyer signs a delegation that lets
  * the seller pull AT MOST the toll, to itself, and nothing else. Mirrors packages/shared/x402.ts.
  */
-export const TOLL_PRICE_ATOMS = 10n ** 18n; // 1 MVOTE per query (18 decimals)
-export const TOLL_DECIMALS = 18;
-export const TOLL_SYMBOL = 'MVOTE';
+export const TOLL_PRICE_ATOMS = 1_000_000n; // 1 mUSDC per query (6 decimals)
+export const TOLL_DECIMALS = 6;
+export const TOLL_SYMBOL = 'mUSDC';
 export const TOLL_RESOURCE = '/context/proposal-42';
+/** x402 budget (in queries) when a grant is bounded by TIME only (no vote cap). cap = N x 1 mUSDC. */
+export const DEFAULT_QUERY_BUDGET = 25;
 
 /** The priced resource for a proposal — `/context/proposal-<last-6-of-id>` (matches the HUD's #id). */
 export function tollResource(proposalId?: bigint | string | null): string {
