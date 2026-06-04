@@ -8,6 +8,7 @@ import type { TallyBreakdown } from '../../lib/voteboard-view';
 import type { VoterRow } from '../../lib/useLiveTally';
 import { VoteTally } from '../VoteTally';
 import { X402TollGate } from '../X402TollGate';
+import { DEFAULT_QUERY_BUDGET } from '../../lib/x402-toll';
 import { OneShotFinale } from '../OneShotFinale';
 import { PermissionInspector } from '../PermissionInspector';
 import { TamperProbe } from '../TamperProbe';
@@ -47,6 +48,7 @@ export function PopoverBody({
           bare
           toll={vm.killed ? undefined : vm.run?.toll}
           queryCount={vm.votesUsed}
+          cap={vm.grantRunId ? (vm.boundMode === 'days' ? DEFAULT_QUERY_BUDGET : vm.maxVotes) : undefined}
           proposalId={vm.grantedProposalId ?? vm.activeProposal.id}
         />
       ) : null;

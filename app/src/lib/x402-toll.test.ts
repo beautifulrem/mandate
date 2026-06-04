@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTokenAmount, X402_PHASES, TOLL_PRICE_ATOMS } from './x402-toll';
+import { formatTokenAmount, X402_PHASES, TOLL_PRICE_ATOMS, TOLL_DECIMALS, TOLL_SYMBOL } from './x402-toll';
 
 describe('formatTokenAmount', () => {
   it('formats whole token amounts', () => {
@@ -24,8 +24,10 @@ describe('X402_PHASES', () => {
   });
 });
 
-describe('TOLL_PRICE_ATOMS', () => {
-  it('is 1 MVOTE (1e18) per query', () => {
-    expect(TOLL_PRICE_ATOMS).toBe(10n ** 18n);
+describe('toll price', () => {
+  it('is 1 mUSDC (1e6, 6 decimals) per query — separate from MVOTE voting power', () => {
+    expect(TOLL_PRICE_ATOMS).toBe(1_000_000n);
+    expect(TOLL_DECIMALS).toBe(6);
+    expect(TOLL_SYMBOL).toBe('mUSDC');
   });
 });

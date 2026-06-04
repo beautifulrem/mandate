@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { useReducedMotion } from 'motion/react';
 import { createPublicClient, erc20Abi, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
-import { AlertTriangle, Coins, Receipt, ShieldCheck, Wallet } from 'lucide-react';
+import { AlertTriangle, Coins, Database, Receipt, ShieldCheck, Wallet } from 'lucide-react';
 import { BASESCAN, RPC_URL, shortHex } from '../lib/config';
 import { cn } from '../lib/cn';
 import type { RunStatus } from '@mandate/shared';
@@ -34,6 +34,7 @@ export function X402TollGate({
   bare = false,
   toll,
   queryCount = 0,
+  cap,
   proposalId,
 }: {
   cfg: DemoConfig;
@@ -43,6 +44,8 @@ export function X402TollGate({
   toll?: RunStatus['toll'];
   /** how many queries have been billed under the current mandate (drives the running count). */
   queryCount?: number;
+  /** the cumulative budget cap in queries (= mUSDC), from the grant; undefined if no grant. */
+  cap?: number;
   /** the proposal being priced — its #id is shown in the resource path. */
   proposalId?: bigint | string | null;
 }) {
@@ -54,7 +57,7 @@ export function X402TollGate({
 
   // when a real toll has settled, the rail shows live on-chain proof; otherwise it traces the lifecycle.
   const resource = toll?.resource ?? tollResource(proposalId);
-  const req = tollChallenge({ asset: cfg.token, payTo: cfg.analyst, chainId: cfg.chainId, resource }).accepts[0];
+  const req = tollChallenge({ asset: cfg.paymentToken, payTo: cfg.analyst, chainId: cfg.chainId, resource }).accepts[0];
   const price = formatTokenAmount(BigInt(req.maxAmountRequired), TOLL_DECIMALS);
   const phaseStep = toll ? X402_PHASES.length : step; // a real settlement marks the whole lifecycle done
   const sellerBalanceFmt = toll ? formatTokenAmount(BigInt(toll.sellerBalance), TOLL_DECIMALS) : bal;
@@ -71,7 +74,7 @@ export function X402TollGate({
       }
       const client = createPublicClient({ chain: baseSepolia, transport: http(RPC_URL) });
       const raw = (await client.readContract({
-        address: cfg.token,
+        address: cfg.paymentToken,
         abi: erc20Abi,
         functionName: 'balanceOf',
         args: [cfg.analyst],
@@ -93,6 +96,31 @@ export function X402TollGate({
         right={<Badge tone="neutral">{TOLL_SYMBOL}/{t.x402.perQuery}</Badge>}
       />
       <p className="text-[13px] leading-relaxed text-ink-soft">{t.x402.hint}</p>
+
+      {/* payment FLOW-DIAGRAM — who pays whom, and how much of the cumulative budget is spent */}
+      <div className="mt-4 flex items-center gap-3 rounded-xl border border-ok/20 bg-surface-2/50 px-3 py-3">
+        <div className="flex flex-col items-center gap-1 text-center">
+          <span className="grid size-9 place-items-center rounded-full border border-ok/40 bg-ok/10 text-ok">
+            <Wallet className="size-4" />
+          </span>
+          <span className="text-[10.5px] font-semibold text-ink-soft">{t.x402.buyerYou}</span>
+        </div>
+        <div className="relative flex-1 self-start pt-4">
+          <div className="h-px w-full bg-gradient-to-r from-ok/40 to-info/40" />
+          <span className="absolute inset-x-0 top-0 text-center text-[9.5px] text-ink-mute">
+            Erc20TransferAmount · ≤ {cap ?? '∞'} {TOLL_SYMBOL}
+          </span>
+          <span className="absolute inset-x-0 top-[18px] text-center font-mono text-[9.5px] text-ok">
+            {queryCount}/{cap ?? '∞'} {t.x402.spent}
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <span className="grid size-9 place-items-center rounded-full border border-info/40 bg-info/10 text-info">
+            <Database className="size-4" />
+          </span>
+          <span className="text-[10.5px] font-semibold text-ink-soft">{t.x402.seller}</span>
+        </div>
+      </div>
 
       {/* the real 402 challenge */}
       <div className="mt-4 overflow-hidden rounded-xl border border-warn/25 bg-[#0e0b06]/70">
