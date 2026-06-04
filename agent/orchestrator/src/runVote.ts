@@ -31,6 +31,7 @@ import {
   type GrantRequest,
   type LensInput,
   type LensVerdict,
+  type TollReceipt,
   type VeniceConfig,
 } from '@mandate/shared';
 import { castVote } from '@mandate/analyst';
@@ -136,23 +137,24 @@ async function cast(
     { publicClient: client, analystWallet, analystAccount: analystEoa, delegationManager: dm },
     { chain: [redelSigned, bundle.root], governor: bundle.governor, proposalId, support: synthesis.decision.support },
   );
-  store.patch(runId, { status: 'voted', vote });
 
-  // 5) x402 PAY-PER-QUERY — settle the REAL toll for this query: the analyst's context feed pulls 1
-  //    MVOTE from the orchestrator SA via a scoped ERC-7710 delegation, on-chain. Non-fatal: a missing
-  //    toll (e.g. an unfunded buyer) never fails an already-cast vote.
+  // 5) x402 PAY-PER-QUERY — settle the REAL toll for this query BEFORE flipping to 'voted', so the
+  //    terminal status the client polls already carries it (the client stops polling once it sees
+  //    'voted'). The analyst's context feed pulls 1 MVOTE from the orchestrator SA via a scoped
+  //    ERC-7710 delegation, on-chain. Non-fatal: a missing toll never blocks an already-cast vote.
+  let toll: TollReceipt | undefined;
   try {
-    const toll = await settleToll(client, bundle.orchSA, proposalId, {
+    toll = await settleToll(client, bundle.orchSA, proposalId, {
       rpcUrl: cfg.rpcUrl,
       analystPk: cfg.analystPk,
       deployerPk: cfg.deployerPk,
       token: cfg.token,
       chainId: bundle.chainId,
     });
-    store.patch(runId, { toll });
   } catch (err) {
     console.error('x402 toll settlement failed (non-fatal):', err instanceof Error ? err.message : err);
   }
+  store.patch(runId, { status: 'voted', vote, ...(toll ? { toll } : {}) });
 }
 
 /** Establish the STANDING mandate for a grant: cache the broad chain (root + orchestrator SA). It does
