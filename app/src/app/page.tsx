@@ -277,6 +277,10 @@ export default function Home() {
   const s = run?.status;
   const killed = !!recallTx;
   const terminal = ['voted', 'failed', 'revoked'].includes(s ?? '');
+  // Is the (single, latest) run actually for the proposal currently on screen? The mandate is global,
+  // but a run/vote is per-proposal — so when the user flips to a DIFFERENT proposal, the graph + TEE
+  // console must fall back to the resting mandate state instead of replaying this run's progression.
+  const runOnActive = !!run && run.proposalId === activeProposal.id.toString();
 
   const vm: MissionVM = {
     lang,
@@ -305,6 +309,7 @@ export default function Home() {
     analystAddr: run?.delegations.participants?.analyst ?? cfg?.analyst,
     killed,
     terminal,
+    runOnActive,
     // 'granted' is the resting standing-mandate state (the run sleeps there after a grant — no vote
     // in flight), so it must NOT count as "running", or the "let AI vote" button stays disabled forever.
     // Only the redelegate→analyzing→deciding→voting stages are a vote actually in flight.

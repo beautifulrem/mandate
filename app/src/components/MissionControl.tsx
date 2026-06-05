@@ -60,6 +60,8 @@ export interface MissionVM {
   analystAddr?: string;
   killed: boolean;
   terminal: boolean;
+  /** the latest run is for the proposal currently on screen (else the graph shows the resting mandate). */
+  runOnActive: boolean;
   running: boolean;
   statusKey: string;
   authorityPct: number;
@@ -107,8 +109,9 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
 
   const runActive = !!vm.venice || !!vm.run;
   // x402 has a REAL per-vote settlement to show only once a toll has cleared; the bubble itself is
-  // always openable (like the Run bubble) and simply shows a placeholder until then.
-  const x402Settled = !!vm.run?.toll && !vm.killed;
+  // always openable (like the Run bubble) and simply shows a placeholder until then. Per-active: a toll
+  // belongs to the proposal it settled for, so it clears when the user flips to a different proposal.
+  const x402Settled = !!vm.run?.toll && vm.runOnActive && !vm.killed;
 
   const rail: RailItem[] = [
     { key: 'wallet', icon: Wallet, title: t.panels.wallet },
@@ -137,8 +140,13 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
   // ONE staged reveal index drives both the authority chain and the center TEE console, so the
   // console appears/decides on the chain's beat instead of the raw backend speed. targetIdx = how far
   // the real run has progressed; revealIdx ratchets toward it at STAGE_MS per stage (never ahead).
+  // The graph + TEE console reflect the proposal ON SCREEN. The run state is global (one latest run),
+  // so when it isn't for the active proposal, drive the reveal off the resting 'granted' mandate state
+  // (the AI can still vote this proposal — it just hasn't yet) rather than the other proposal's run.
+  // running/terminal stay global (they gate the vote button), so this only re-skins the display.
+  const sEff = vm.runOnActive || vm.killed ? vm.s : vm.grantRunId ? 'granted' : undefined;
   let targetIdx = -1;
-  for (let i = 0; i < ORDER.length; i++) if (reached(vm.s, ORDER[i])) targetIdx = i;
+  for (let i = 0; i < ORDER.length; i++) if (reached(sEff, ORDER[i])) targetIdx = i;
   const revealIdx = useRatchet(targetIdx, STAGE_MS, vm.killed);
 
   const toggle = (key: PanelKey) => setPanel((c) => (c === key ? null : key));
@@ -167,13 +175,13 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
             t={t}
             parties={{ you: vm.youAddr, orch: vm.orchAddr, analyst: vm.analystAddr, board: VOTE_BOARD_ADDRESS }}
             shownIdx={revealIdx}
-            status={vm.s}
+            status={sEff}
             killed={vm.killed}
             cutting={vm.recalling}
             connected={vm.isConnected}
             pips={pips}
-            lenses={vm.lenses}
-            synthDecision={vm.venice?.decision}
+            lenses={vm.runOnActive ? vm.lenses : undefined}
+            synthDecision={vm.runOnActive ? vm.venice?.decision : undefined}
             votedHere={youVotedHere}
             paymentCap={vm.grantRunId ? (vm.boundMode === 'days' ? DEFAULT_QUERY_BUDGET : vm.maxVotes) : 0}
             tollSettled={!!vm.run?.toll && youVotedHere && !vm.killed}
@@ -181,7 +189,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
           />
         </div>
 
-        <TeeConsole venice={vm.venice} status={vm.s} stageIdx={revealIdx} lenses={vm.lenses} txHash={vm.run?.vote?.txHash} killed={vm.killed} t={t} />
+        <TeeConsole venice={vm.runOnActive ? vm.venice : undefined} status={sEff} stageIdx={revealIdx} lenses={vm.runOnActive ? vm.lenses : undefined} txHash={vm.runOnActive ? vm.run?.vote?.txHash : undefined} killed={vm.killed} t={t} />
 
         <ScopeBlock vm={vm} />
 

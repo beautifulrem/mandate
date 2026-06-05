@@ -32,7 +32,9 @@ export function ScopeBlock({ vm }: { vm: MissionVM }) {
   const { openConnectModal } = useConnectModal();
   const granted = !!vm.grantRunId;
   const killed = vm.killed;
-  const voted = vm.statusKey === 'voted';
+  // the "vote cast" badge belongs to the proposal that was voted — not whatever proposal is now on
+  // screen (the mandate readout above stays, since the mandate itself is DAO-wide, not per-proposal).
+  const voted = vm.runOnActive && vm.statusKey === 'voted';
 
   const grantOff = grantDisabled({ busy: vm.busy, hasConfig: !!vm.cfg, connected: vm.isConnected, status: vm.s, killed });
   const voteOff = voteActiveDisabled({ hasGrant: granted, busy: vm.busy, running: vm.running, killed });
