@@ -176,7 +176,6 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
             synthDecision={vm.venice?.decision}
             votedHere={youVotedHere}
             paymentCap={vm.grantRunId ? (vm.boundMode === 'days' ? DEFAULT_QUERY_BUDGET : vm.maxVotes) : 0}
-            paymentSpent={vm.votesUsed}
             tollSettled={!!vm.run?.toll && youVotedHere && !vm.killed}
             tollTxHash={vm.run?.toll?.txHash}
           />
