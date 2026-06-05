@@ -150,7 +150,14 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
   const sEff = vm.runOnActive ? vm.s : vm.grantRunId ? 'granted' : undefined;
   let targetIdx = -1;
   for (let i = 0; i < ORDER.length; i++) if (reached(sEff, ORDER[i])) targetIdx = i;
-  const revealIdx = useRatchet(targetIdx, STAGE_MS, vm.killed);
+  // Pace the staged reveal ONLY while a vote is actually in flight on the proposal ON SCREEN. In every
+  // other case — resting, already-voted, viewing a different proposal, or severed — jump straight to the
+  // target. So flipping BACK to a proposal you already voted shows the finished graph at once, never a
+  // replay of the whole animation; only a live cast animates. (climbed snaps when !liveRun, so it stays
+  // in sync; revealIdx returns targetIdx directly on the non-live frame to avoid the ratchet's 1-frame lag.)
+  const liveRun = vm.running && vm.runOnActive && !vm.killed;
+  const climbed = useRatchet(targetIdx, STAGE_MS, !liveRun);
+  const revealIdx = liveRun ? climbed : targetIdx;
 
   const toggle = (key: PanelKey) => setPanel((c) => (c === key ? null : key));
 
@@ -178,6 +185,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
             t={t}
             parties={{ you: vm.youAddr, orch: vm.orchAddr, analyst: vm.analystAddr, board: VOTE_BOARD_ADDRESS }}
             shownIdx={revealIdx}
+            instant={!liveRun}
             status={sEff}
             killed={vm.killed}
             cutting={vm.recalling}

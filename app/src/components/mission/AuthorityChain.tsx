@@ -376,6 +376,7 @@ function PaymentFlow({
   lensRefs,
   active,
   decidedLit,
+  live,
   killed,
 }: {
   container: DivRef;
@@ -386,6 +387,9 @@ function PaymentFlow({
   active: boolean;
   /** the 终裁/Arbiter node is lit — drives the coin payment + the 终裁↔Venice query. */
   decidedLit: boolean;
+  /** a vote is actually in flight on this proposal — the coin fires ONLY then, so flipping back to an
+   *  already-paid proposal shows the finished state (coin gone) instead of replaying the payment. */
+  live: boolean;
   killed: boolean;
 }) {
   const reduce = useReducedMotion();
@@ -460,7 +464,7 @@ function PaymentFlow({
   // coin payment 你→终裁 + 终裁↔Venice synthesis query — fire once when 终裁 lights
   useEffect(() => {
     const coin = coinRef.current;
-    if (!geom || killed || !decidedLit || synthFired.current) return;
+    if (!geom || killed || !decidedLit || synthFired.current || !live) return;
     synthFired.current = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
     const repulse = (ref: typeof youWalletRef) => {
@@ -499,7 +503,7 @@ function PaymentFlow({
       fly.stop();
       timers.forEach(clearTimeout);
     };
-  }, [geom, decidedLit, killed, reduce]);
+  }, [geom, decidedLit, live, killed, reduce]);
 
   if (!geom) return null;
   const dim: CSSProperties | undefined = killed ? { opacity: 0.4, filter: 'grayscale(1)' } : undefined;
@@ -620,6 +624,7 @@ export function AuthorityChain({
   t,
   parties,
   shownIdx,
+  instant,
   status,
   killed,
   cutting,
@@ -635,6 +640,8 @@ export function AuthorityChain({
   t: Dict;
   parties: ChainParties;
   shownIdx: number; // staged reveal index, driven by the cockpit (shared with the TEE console)
+  /** snap node/lens lighting straight to the target instead of animating — true except during a live cast. */
+  instant?: boolean;
   status?: string;
   killed: boolean;
   cutting: boolean;
@@ -660,14 +667,14 @@ export function AuthorityChain({
   const s = status;
   const live = !!s && !['', 'idle'].includes(s);
 
-  const litIdx = useRatchet(shownIdx, PACKET_MS, killed);
+  const litIdx = useRatchet(shownIdx, PACKET_MS, killed || !!instant);
   const idxOf = (target: string) => (ORDER as readonly string[]).indexOf(target);
   const beamLive = (target: string) => shownIdx >= idxOf(target);
   const nodeLit = (target: string) => litIdx >= idxOf(target);
 
   // The four lenses light one-by-one once 'analyzing' is revealed (the committee reports in).
   const lensTarget = beamLive('analyzing') ? LENSES.length - 1 : -1;
-  const lensLit = useRatchet(lensTarget, LENS_STAGGER_MS, killed);
+  const lensLit = useRatchet(lensTarget, LENS_STAGGER_MS, killed || !!instant);
 
   const orchWorking = nodeLit('redelegated') && !beamLive('analyzing'); // lit, holding the scope
   // the Arbiter glows brand-orange while the committee's inputs converge on it (the fan-in is live but
@@ -783,6 +790,7 @@ export function AuthorityChain({
           lensRefs={lensRefs}
           active={lensLit >= 0}
           decidedLit={nodeLit('decided')}
+          live={!instant}
           killed={killed}
         />
       )}
