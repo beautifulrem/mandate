@@ -357,7 +357,8 @@ interface PayGeom {
   youWallet: PayPoint;
   synthWallet: PayPoint;
   enclave: { x: number; y: number; w: number; h: number }; // the Venice-TEE box the lens committee runs inside
-  synthSeg: PaySeg; // 终裁↔Venice synthesis tap (from = synth rim, to = enclave right edge)
+  venice: PayPoint; // the Venice AI node, docked at the enclave's bottom-right corner
+  synthSeg: PaySeg; // 终裁↔Venice synthesis tap (from = synth rim, to = the Venice node)
 }
 
 /**
@@ -419,10 +420,13 @@ function PaymentFlow({
       const ex1 = Math.max(...lensRects.map((r) => r.right)) - cr.left + PAD;
       const ey1 = Math.max(...lensRects.map((r) => r.bottom)) - cr.top + PAD;
       const enclave = { x: ex0, y: ey0, w: ex1 - ex0, h: ey1 - ey0 };
-      const enclaveRight: PayPoint = { x: enclave.x + enclave.w, y: enclave.y + enclave.h / 2 };
+      // the Venice AI node hovers in the empty upper triangle between the committee box and 终裁 — above
+      // every fan-in beam and below the proposal dots, clear of the TeeConsole that fills the area below.
+      // The box is its TEE (committee runs inside); 终裁 taps up from the lower-right (above the fan-in).
+      const venice: PayPoint = { x: (enclave.x + enclave.w + synthC.x) / 2, y: enclave.y + 36 };
       const synthSeg: PaySeg = {
-        from: along(synthC, enclaveRight, rad(synthRef.current!.getBoundingClientRect()) + 4),
-        to: along(enclaveRight, synthC, 2),
+        from: along(synthC, venice, rad(synthRef.current!.getBoundingClientRect()) + 4),
+        to: along(venice, synthC, 19),
       };
       setGeom({
         w: cr.width,
@@ -430,6 +434,7 @@ function PaymentFlow({
         youWallet: { x: youC.x + 21, y: youC.y + 21 },
         synthWallet: { x: synthC.x - 21, y: synthC.y + 21 },
         enclave,
+        venice,
         synthSeg,
       });
     };
@@ -515,11 +520,14 @@ function PaymentFlow({
           the per-lens queries need no crossing lines). Brightens while the committee is analyzing. */}
       <div
         className="pay-enclave"
-        style={{ left: geom.enclave.x, top: geom.enclave.y, width: geom.enclave.w, height: geom.enclave.h, opacity: killed ? 0.3 : active ? 1 : 0.58, filter: killed ? 'grayscale(1)' : undefined }}
-      >
-        <span className="pay-enclave-tag">
-          <Sparkles size={11} /> Venice AI · TEE
+        style={{ left: geom.enclave.x, top: geom.enclave.y, width: geom.enclave.w, height: geom.enclave.h, opacity: killed ? 0.3 : active ? 1 : 0.6, filter: killed ? 'grayscale(1)' : undefined }}
+      />
+      {/* the Venice AI node — the inference platform; the box around the committee is its TEE, 终裁 taps it */}
+      <div className="pay-venice" style={{ left: geom.venice.x, top: geom.venice.y, opacity: killed ? 0.35 : 1, filter: killed ? 'grayscale(1)' : undefined }}>
+        <span className={`pay-venice-disc${active ? ' on' : ''}`}>
+          <Sparkles size={15} />
         </span>
+        <span className="pay-venice-label">Venice AI</span>
       </div>
       {/* the seller's single synthesis tap: 终裁 ↔ Venice (faint persistent line + a data pulse on query) */}
       <svg className="beam-svg" width={geom.w} height={geom.h} viewBox={`0 0 ${geom.w} ${geom.h}`} fill="none" aria-hidden="true">
