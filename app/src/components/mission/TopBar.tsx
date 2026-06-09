@@ -45,7 +45,7 @@ export function TopBar({
             type="button"
             onClick={toggleNetwork}
             title="Switch network"
-            className={`inline-flex items-center gap-2 rounded-chip border px-3.5 py-1.5 text-xs font-semibold backdrop-blur transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-chip border bg-none px-3.5 py-1.5 text-xs font-semibold shadow-none backdrop-blur transition-colors ${
               isMainnet
                 ? 'border-info/45 bg-info/10 text-info hover:border-info/70'
                 : 'border-hairline bg-surface/60 text-ink-soft hover:border-brand/40 hover:text-ink'
