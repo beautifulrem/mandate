@@ -9,7 +9,6 @@ import type { VoterRow } from '../../lib/useLiveTally';
 import { VoteTally } from '../VoteTally';
 import { X402TollGate } from '../X402TollGate';
 import { DEFAULT_QUERY_BUDGET } from '../../lib/x402-toll';
-import { OneShotFinale } from '../OneShotFinale';
 import { PermissionInspector } from '../PermissionInspector';
 import { TamperProbe } from '../TamperProbe';
 import { SmartAccountCard } from '../panels/SmartAccountCard';
@@ -40,19 +39,33 @@ export function PopoverBody({
       return <WalletBody vm={vm} />;
     case 'tally':
       return <VoteTally tally={tally} voters={voters} live={live} you={vm.userSA?.address} t={vm.t} bare />;
-    case 'x402':
-      return vm.cfg ? (
+    case 'x402': {
+      if (!vm.cfg) return null;
+      // In the mainnet replay the toll is a REAL 0.001 USDC micro-settlement: the burner pre-signed a
+      // 0.1 USDC Erc20TransferAmount (≈100 queries). Off replay it's the testnet 1 mUSDC/query mandate.
+      const mainnet = vm.replayMode;
+      const cap = mainnet
+        ? vm.relayInfo
+          ? Math.round(Number(vm.relayInfo.tollBudgetUsdc) / Number(vm.relayInfo.tollUsdc))
+          : undefined
+        : vm.grantRunId
+          ? vm.boundMode === 'days'
+            ? DEFAULT_QUERY_BUDGET
+            : vm.maxVotes
+          : undefined;
+      return (
         <X402TollGate
           cfg={vm.cfg}
           t={vm.t}
           bare
+          mainnet={mainnet}
+          basescan={vm.relayInfo?.basescan}
           toll={vm.killed ? undefined : vm.run?.toll}
-          queryCount={vm.votesUsed}
-          cap={vm.grantRunId ? (vm.boundMode === 'days' ? DEFAULT_QUERY_BUDGET : vm.maxVotes) : undefined}
+          queryCount={mainnet ? 1 : vm.votesUsed}
+          cap={cap}
         />
-      ) : null;
-    case 'oneshot':
-      return <OneShotFinale t={vm.t} bare />;
+      );
+    }
     case 'run':
       return <RunBody vm={vm} />;
     default:
@@ -121,7 +134,7 @@ function RunBody({ vm }: { vm: MissionVM }) {
           <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-info/80">
             <Lock className="size-3" /> {t.split.private}
           </div>
-          <TeeConsole venice={vm.venice} status={vm.s} lenses={vm.lenses} txHash={vm.run?.vote?.txHash} killed={vm.killed} t={t} />
+          <TeeConsole venice={vm.venice} status={vm.s} lenses={vm.lenses} txHash={vm.run?.vote?.txHash} basescan={vm.relayInfo?.basescan} killed={vm.killed} t={t} />
         </div>
       )}
       {(vm.run?.vote || vm.killed) && (

@@ -30,7 +30,7 @@ type Pt = { x: number; y: number };
  * particle stream: the funded seller's request to Venice then Venice's response, edge-trimmed, played
  * once (request → response → gone) — not an infinite loop.
  */
-function MiniPaymentDiagram({ cap, spent, t }: { cap?: number; spent: number; t: Dict }) {
+function MiniPaymentDiagram({ cap, spent, t, symbol, buyerLabel, budgetStr }: { cap?: number; spent: number; t: Dict; symbol: string; buyerLabel: string; budgetStr: string }) {
   const reduce = useReducedMotion();
   const wrap = useRef<HTMLDivElement>(null);
   const n0 = useRef<HTMLDivElement>(null); // 你
@@ -91,7 +91,7 @@ function MiniPaymentDiagram({ cap, spent, t }: { cap?: number; spent: number; t:
   }, [reduce]);
 
   const nodes = [
-    { ref: n0, icon: User, label: t.x402.buyerYou, tone: '#ffd470' },
+    { ref: n0, icon: User, label: buyerLabel, tone: '#ffd470' },
     { ref: n1, icon: Bot, label: t.nodes.orch.who, tone: 'var(--color-brand)' },
     { ref: n2, icon: Scale, label: t.nodes.synthesis.who, tone: '#ffd470' },
     { ref: n3, icon: Sparkles, label: t.nodes.venice.who, tone: 'var(--color-info)' },
@@ -130,7 +130,7 @@ function MiniPaymentDiagram({ cap, spent, t }: { cap?: number; spent: number; t:
         ))}
       </div>
       <div className="absolute inset-x-0 bottom-1.5 text-center font-mono text-[9.5px] text-ink-mute">
-        Erc20TransferAmount · {spent}/{cap ?? '∞'} {t.x402.spent} (≤ {cap ?? '∞'} {TOLL_SYMBOL})
+        Erc20TransferAmount · {spent}/{cap ?? '∞'} {t.x402.spent} (≤ {budgetStr} {symbol})
       </div>
       {g && !reduce && data === 'req' && dataParticles(g.dataFrom, g.dataTo, 'req')}
       {g && !reduce && data === 'resp' && dataParticles(g.dataTo, g.dataFrom, 'resp')}
@@ -178,6 +178,8 @@ export function X402TollGate({
   toll,
   queryCount = 0,
   cap,
+  mainnet = false,
+  basescan,
 }: {
   cfg: DemoConfig;
   t: Dict;
@@ -188,11 +190,29 @@ export function X402TollGate({
   queryCount?: number;
   /** the cumulative budget cap in queries (= mUSDC), from the grant. */
   cap?: number;
+  /** mainnet replay — the toll is a real 0.001 USDC settlement pulled from a 7702 burner. */
+  mainnet?: boolean;
+  /** explorer base for the on-chain links (defaults to the testnet BASESCAN). */
+  basescan?: string;
 }) {
   if (!toll) return <X402Locked t={t} bare={bare} />;
 
+  // On mainnet the token is real USDC and the payer is the 7702 burner; on testnet it's mock mUSDC
+  // from the user's smart account. Copy + symbol + explorer all follow the network.
+  const symbol = mainnet ? 'USDC' : TOLL_SYMBOL;
+  const scan = basescan ?? BASESCAN;
+  const buyerLabel = mainnet ? t.x402.buyerBurner : t.x402.buyerYou;
+  const hint = mainnet ? t.x402.hintMainnet : t.x402.hint;
+  const resultCopy = mainnet ? t.x402.resultMainnet : t.x402.result;
+  const phaseDesc = mainnet ? t.x402.phaseDescMainnet : t.x402.phaseDesc;
+
   const req = tollChallenge({ asset: cfg.paymentToken, payTo: cfg.analyst, chainId: cfg.chainId, resource: toll.resource }).accepts[0];
-  const price = formatTokenAmount(BigInt(req.maxAmountRequired), TOLL_DECIMALS);
+  // Source the on-chain values from the REAL toll receipt (cfg is a placeholder in the replay): the
+  // asset, seller, amount and resource are the actually-settled ones, so links/amounts stay correct.
+  const price = formatTokenAmount(BigInt(toll.amount), TOLL_DECIMALS);
+  const priceNum = Number(price);
+  // the scoped budget in tokens = queries × per-query price (testnet 1:1 mUSDC; mainnet 0.001 USDC).
+  const budgetStr = cap != null ? String(Math.round(cap * priceNum * 1e6) / 1e6) : '∞';
   const sellerBalanceFmt = formatTokenAmount(BigInt(toll.sellerBalance), TOLL_DECIMALS);
 
   return (
@@ -207,14 +227,14 @@ export function X402TollGate({
         }
         right={
           <Badge tone="neutral">
-            {TOLL_SYMBOL}/{t.x402.perQuery}
+            {symbol}/{t.x402.perQuery}
           </Badge>
         }
       />
-      <p className="text-[13px] leading-relaxed text-ink-soft">{t.x402.hint}</p>
+      <p className="text-[13px] leading-relaxed text-ink-soft">{hint}</p>
 
       {/* payment FLOW — a mini replica of the cockpit authority graph (你→编排器→终裁→Venice) */}
-      <MiniPaymentDiagram cap={cap} spent={queryCount} t={t} />
+      <MiniPaymentDiagram cap={cap} spent={queryCount} t={t} symbol={symbol} buyerLabel={buyerLabel} budgetStr={budgetStr} />
 
       {/* the real 402 challenge */}
       <div className="mt-4 overflow-hidden rounded-xl border border-warn/25 bg-[#0e0b06]/70">
@@ -226,21 +246,21 @@ export function X402TollGate({
           <Row
             k="asset"
             v={
-              <a className="text-info hover:underline" href={`${BASESCAN}/address/${req.asset}`} target="_blank" rel="noreferrer">
-                {TOLL_SYMBOL} {shortHex(req.asset, 4)} ↗
+              <a className="text-info hover:underline" href={`${scan}/address/${toll.asset}`} target="_blank" rel="noreferrer">
+                {symbol} {shortHex(toll.asset, 4)} ↗
               </a>
             }
           />
           <Row
             k="payTo"
             v={
-              <a className="text-info hover:underline" href={`${BASESCAN}/address/${req.payTo}`} target="_blank" rel="noreferrer">
-                {shortHex(req.payTo, 4)} ↗
+              <a className="text-info hover:underline" href={`${scan}/address/${toll.seller}`} target="_blank" rel="noreferrer">
+                {shortHex(toll.seller, 4)} ↗
               </a>
             }
           />
-          <Row k="price" v={<span className="text-ink">{price} {TOLL_SYMBOL} <span className="text-ink-mute">/ {t.x402.perQuery}</span></span>} />
-          <Row k="resource" v={req.resource} />
+          <Row k="price" v={<span className="text-ink">{price} {symbol} <span className="text-ink-mute">/ {t.x402.perQuery}</span></span>} />
+          <Row k="resource" v={toll.resource} />
         </div>
       </div>
 
@@ -251,8 +271,8 @@ export function X402TollGate({
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
           <Badge tone="ok">Erc20TransferAmount</Badge>
-          <Badge tone="neutral">≤ {cap ?? '∞'} {TOLL_SYMBOL}</Badge>
-          <Badge tone="neutral">to = {shortHex(cfg.analyst, 4)}</Badge>
+          <Badge tone="neutral">≤ {budgetStr} {symbol}</Badge>
+          <Badge tone="neutral">to = {shortHex(toll.seller, 4)}</Badge>
         </div>
         <p className="mt-2 text-[12px] leading-relaxed text-ink-mute">{t.x402.scopeNote}</p>
       </div>
@@ -267,7 +287,7 @@ export function X402TollGate({
                 {t.x402.phases[p.key]}
                 {p.code != null && <span className="font-mono text-[11px] font-normal text-ink-mute"> · {p.code}</span>}
               </div>
-              <div className="text-[11.5px] leading-snug text-ink-mute">{t.x402.phaseDesc[p.key]}</div>
+              <div className="text-[11.5px] leading-snug text-ink-mute">{phaseDesc[p.key]}</div>
             </div>
           </div>
         ))}
@@ -275,17 +295,17 @@ export function X402TollGate({
 
       {/* the on-chain receipt — redeem tx + the seller's real mUSDC balance at settlement + running count */}
       <div className="mt-4 rounded-xl border border-ok/25 bg-ok/[0.06] px-4 py-3.5">
-        <p className="text-[12.5px] leading-relaxed text-ink-soft">{t.x402.result}</p>
+        <p className="text-[12.5px] leading-relaxed text-ink-soft">{resultCopy}</p>
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
           <Badge tone="ok">
             <Receipt className="size-3" /> {t.x402.settled}
             {queryCount > 0 ? ` · ${queryCount}` : ''}
           </Badge>
-          <a className="font-mono text-[12px] text-info hover:underline" href={`${BASESCAN}/tx/${toll.txHash}`} target="_blank" rel="noreferrer">
+          <a className="font-mono text-[12px] text-info hover:underline" href={`${scan}/tx/${toll.txHash}`} target="_blank" rel="noreferrer">
             {shortHex(toll.txHash, 5)} ↗
           </a>
           <Badge tone="ok">
-            <Wallet className="size-3" /> {t.x402.sellerBalance}: {sellerBalanceFmt} {TOLL_SYMBOL}
+            <Wallet className="size-3" /> {t.x402.sellerBalance}: {sellerBalanceFmt} {symbol}
           </Badge>
           <span className="inline-flex items-center gap-1.5 rounded-chip border border-info/30 bg-info/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-info">
             <span className="size-1.5 rounded-full bg-info motion-safe:animate-pulse" /> {t.x402.liveRead}

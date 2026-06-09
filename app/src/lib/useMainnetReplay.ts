@@ -81,6 +81,7 @@ export function useMainnetReplay(statics: {
     lenses: snap.lenses,
     venice: snap.venice,
     vote: { txHash: snap.vote.txHash, support: snap.vote.support, blockNumber: snap.vote.blockNumber, relay: '1shot' },
+    ...(snap.toll ? { toll: snap.toll } : {}),
     updatedAt: snap.recordedAt,
   } as unknown as RunStatus;
 
@@ -157,6 +158,7 @@ export function useMainnetReplay(statics: {
       tollTx: snap.toll?.txHash,
       castTx: snap.vote.txHash,
       tollUsdc: snap.toll ? (Number(snap.toll.amount) / 1e6).toString() : '0.001',
+      tollBudgetUsdc: '0.1',
       feeUsdc: snap.oneshot.feeUsdc,
     },
   };

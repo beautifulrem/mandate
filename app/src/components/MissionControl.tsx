@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type RefObject } from 'react';
 import type { Address } from 'viem';
-import { Activity, Coins, Rocket, Vote, Wallet } from 'lucide-react';
+import { Activity, Coins, Vote, Wallet } from 'lucide-react';
 import { VOTE_BOARD_ADDRESS, type DaoProposal, type Delegation, type RunStatus } from '@mandate/shared';
 import type { DemoConfig } from '../lib/orchestrator';
 import type { SmartAccount } from '../lib/wallet';
@@ -108,6 +108,8 @@ export interface RelayInfo {
   tollTx?: string;
   castTx?: string;
   tollUsdc: string;
+  /** the cumulative x402 budget the burner pre-signed (USDC) — the Erc20TransferAmount cap. */
+  tollBudgetUsdc: string;
   feeUsdc: string;
 }
 
@@ -137,11 +139,12 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
   // belongs to the proposal it settled for, so it clears when the user flips to a different proposal.
   const x402Settled = !!vm.run?.toll && vm.runOnActive && !vm.killed;
 
+  // The 1Shot detail no longer has its own rail bubble — the mainnet replay shows it inline, and on
+  // testnet 1Shot doesn't run, so a sidebar replay would be misplaced.
   const rail: RailItem[] = [
     { key: 'wallet', icon: Wallet, title: t.panels.wallet },
     { key: 'tally', icon: Vote, title: t.panels.tally },
     { key: 'x402', icon: Coins, title: t.panels.x402, dot: x402Settled },
-    { key: 'oneshot', icon: Rocket, title: t.panels.oneshot },
     { key: 'run', icon: Activity, title: t.panels.run, dot: vm.running },
   ];
 
@@ -230,11 +233,11 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
           />
         </div>
 
-        <TeeConsole venice={vm.runOnActive ? vm.venice : undefined} status={sEff} stageIdx={revealIdx} lenses={vm.runOnActive ? vm.lenses : undefined} txHash={vm.runOnActive ? vm.run?.vote?.txHash : undefined} killed={vm.killed} t={t} />
+        <TeeConsole venice={vm.runOnActive ? vm.venice : undefined} status={sEff} stageIdx={revealIdx} lenses={vm.runOnActive ? vm.lenses : undefined} txHash={vm.runOnActive ? vm.run?.vote?.txHash : undefined} basescan={vm.relayInfo?.basescan} killed={vm.killed} t={t} />
 
         <ScopeBlock vm={vm} />
 
-        <CapabilityDock t={t} onOpen={setPanel} connected={vm.isConnected} revealIdx={revealIdx} killed={vm.killed} x402Settled={x402Settled} />
+        <CapabilityDock t={t} onOpen={setPanel} connected={vm.isConnected} revealIdx={revealIdx} killed={vm.killed} x402Settled={x402Settled} mainnet={vm.replayMode} />
 
         {/* mainnet replay: the full 1Shot relay detail inline (relay lifecycle + live 7702 check + proof wall) */}
         {vm.replayMode && (

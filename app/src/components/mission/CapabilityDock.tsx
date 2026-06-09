@@ -9,7 +9,7 @@ import type { PanelKey } from './IconRail';
  * met-track micro badges (4337 · 7710 · A2A · TEE) below — the judge-readable "what this proves"
  * row. Clicking a card opens its popover.
  */
-export function CapabilityDock({ t, onOpen, connected, revealIdx, killed, x402Settled }: { t: Dict; onOpen: (key: PanelKey) => void; connected: boolean; revealIdx: number; killed?: boolean; x402Settled?: boolean }) {
+export function CapabilityDock({ t, onOpen, connected, revealIdx, killed, x402Settled, mainnet }: { t: Dict; onOpen: (key: PanelKey) => void; connected: boolean; revealIdx: number; killed?: boolean; x402Settled?: boolean; mainnet?: boolean }) {
   // Light up in sequence, in lockstep with the authority chain (revealIdx = the same staged index):
   // 4337 on connect, then 7710 (granted = stage 0) → A2A (redelegated = 1) → TEE (analyzing = 2). Each
   // chip pops + glows as it lights (see .mc-chip.met), so the proofs cascade instead of flipping at once.
@@ -31,11 +31,13 @@ export function CapabilityDock({ t, onOpen, connected, revealIdx, killed, x402Se
             <span className="mc-cap-k">
               x402 {x402Settled && <span className="live-dot" />}
             </span>
-            <span className="mc-cap-v">1 mUSDC / {t.x402.perQuery}</span>
+            <span className="mc-cap-v">{mainnet ? '0.001 USDC' : '1 mUSDC'} / {t.x402.perQuery}</span>
           </span>
         </button>
 
-        <button type="button" className="mc-cap cyan" onClick={() => onOpen('oneshot')} aria-label={t.panels.oneshot}>
+        {/* 1Shot is a MAINNET-only relay — on testnet it can't run, so the card is shown inert/grey. The
+            detail itself lives inline in the mainnet replay, so this card is informational (not clickable). */}
+        <div className={`mc-cap cyan${mainnet ? '' : ' inert'}`} aria-label={t.panels.oneshot}>
           <span className="mc-cap-ic">
             <Rocket className="size-[19px]" />
           </span>
@@ -43,9 +45,9 @@ export function CapabilityDock({ t, onOpen, connected, revealIdx, killed, x402Se
             <span className="mc-cap-k">
               1Shot <Zap className="size-3.5 text-cyan" />
             </span>
-            <span className="mc-cap-v">{t.capOneShot}</span>
+            <span className="mc-cap-v">{mainnet ? t.capOneShot : t.capOneShotTestnet}</span>
           </span>
-        </button>
+        </div>
       </div>
 
       <div className="mc-tracks">

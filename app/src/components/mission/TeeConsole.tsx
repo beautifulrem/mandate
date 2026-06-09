@@ -21,6 +21,7 @@ export function TeeConsole({
   stageIdx,
   lenses,
   txHash,
+  basescan,
   killed,
   t,
 }: {
@@ -30,6 +31,8 @@ export function TeeConsole({
   lenses?: RunStatus['lenses'];
   /** the castVote tx hash (present once 'voted') — the real on-chain artifact the verdict row links to. */
   txHash?: string;
+  /** explorer base for the castVote link (defaults to testnet BASESCAN; mainnet replay overrides it). */
+  basescan?: string;
   killed: boolean;
   t: Dict;
 }) {
@@ -202,7 +205,7 @@ export function TeeConsole({
                 )}
                 {txHash && (
                   <a
-                    href={`${BASESCAN}/tx/${txHash}`}
+                    href={`${basescan ?? BASESCAN}/tx/${txHash}`}
                     target="_blank"
                     rel="noreferrer"
                     title={`${t.castVoteTx} ${txHash}`}

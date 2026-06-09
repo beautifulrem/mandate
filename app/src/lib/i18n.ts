@@ -71,6 +71,7 @@ const en = {
   burnerNode: { who: 'Burner', role: 'casts via 1Shot' },
   panels: { wallet: 'Smart Account', tally: 'DAO tally', x402: 'x402 toll gate', oneshot: '1Shot relay', run: 'Run detail' },
   capOneShot: 'mainnet relay · instant',
+  capOneShotTestnet: 'mainnet only',
   trackTips: {
     '4337': 'Your MetaMask Smart Account (ERC-4337) signs and redeems the delegation for you.',
     '7710': "ERC-7710 scoped permission: vote-only, can't move funds, revocable, enforced on-chain.",
@@ -199,6 +200,15 @@ const en = {
       settle: 'The seller redeems it, pulling exactly 1 mUSDC from YOUR smart account, and nothing else.',
       data: 'Toll settled. The feed returns 200 with the requested context.',
     },
+    buyerBurner: 'Burner budget',
+    hintMainnet: 'On mainnet the agent runs from a 7702 burner you pre-fund with a small USDC budget; its data feed pulls per query via a scoped ERC-7710 delegation, settled on Base mainnet. Your MVOTE voting power is never touched.',
+    resultMainnet: 'Settled on Base mainnet: the seller pulled EXACTLY 0.001 USDC through the scoped delegation. Nothing more was reachable. Its live balance below is the real on-chain proof; the feed then returns 200 + data.',
+    phaseDescMainnet: {
+      require: 'The data feed answers the agent with 402. Pay before any data is served.',
+      sign: 'The 7702 burner signed a cumulative Erc20TransferAmount budget: at most 0.1 USDC, payable only to the seller.',
+      settle: 'The seller redeems it on Base mainnet, pulling exactly 0.001 USDC from the burner, and nothing else.',
+      data: 'Toll settled on-chain. The feed returns 200 with the requested context.',
+    },
   },
 };
 
@@ -267,6 +277,7 @@ const zh: Dict = {
   burnerNode: { who: 'Burner', role: '经 1Shot 投票' },
   panels: { wallet: '智能账户', tally: 'DAO 计票', x402: 'x402 收费门', oneshot: '1Shot 中继', run: '运行详情' },
   capOneShot: '主网中继 · 即时',
+  capOneShotTestnet: '仅主网',
   trackTips: {
     '4337': 'MetaMask 智能账户 (ERC-4337) 替你签署并兑付这份委托。',
     '7710': 'ERC-7710 受限权限:仅投票、不能动资金、可随时撤销、由链上强制。',
@@ -394,6 +405,15 @@ const zh: Dict = {
       sign: '授权时你签了一张累计的 Erc20TransferAmount 预算:至多 N mUSDC、且只能付给卖方。',
       settle: '卖方兑现委托,从你的智能账户精确划走 1 mUSDC,多一分都取不走。',
       data: '通行费已结算:数据源返回 200 与所请求的内容。',
+    },
+    buyerBurner: 'Burner 预算',
+    hintMainnet: '主网上代理跑在一个 7702 burner 上,你预先给它一小笔 USDC 预算;它的数据源按次扣费,用受限的 ERC-7710 委托在 Base 主网上结算。你的 MVOTE 投票权全程不动。',
+    resultMainnet: '已在 Base 主网结算:卖方凭受限委托精确划走 0.001 USDC,别的一概取不走。下方实时余额即为真实链上凭证;随后数据源返回 200 与内容。',
+    phaseDescMainnet: {
+      require: '数据源对代理的请求回以 402:取数据前先付费。',
+      sign: '7702 burner 签了一张累计的 Erc20TransferAmount 预算:至多 0.1 USDC、且只能付给卖方。',
+      settle: '卖方在 Base 主网兑现委托,从 burner 精确划走 0.001 USDC,多一分都取不走。',
+      data: '通行费已链上结算:数据源返回 200 与所请求的内容。',
     },
   },
 };
