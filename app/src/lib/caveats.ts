@@ -80,7 +80,7 @@ export function decodeVoteCaveats(del: Delegation, chainId: number): VoteCaveatR
       enforcerName: '(unconstrained field)',
       enforcerAddr: '',
       claim: 'support byte',
-      value: 'FREE — Venice decides',
+      value: 'FREE: Venice decides',
       locked: false,
     },
   ];

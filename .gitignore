@@ -41,3 +41,4 @@ adversarial-*.md
 next-env.d.ts
 .vercel
 oneshot-snapshot-*.json
+packages/shared/tsconfig.scripts.json

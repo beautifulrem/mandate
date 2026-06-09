@@ -34,9 +34,9 @@ const mapleCN = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Mandate — Revocable AI Governance Delegation',
+  title: 'Mandate: Revocable AI Governance Delegation',
   description:
-    'Grant an AI agent scoped, revocable authority to vote on your behalf — and kill the whole delegation chain on-chain in seconds.',
+    'Grant an AI agent scoped, revocable authority to vote on your behalf, and kill the whole delegation chain on-chain in seconds.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -131,13 +131,13 @@ export function TamperProbe({ rootDel, governor, proposalId, chainId, bare = fal
       <div className="grid gap-2.5">
         <div className={cn('flex items-center justify-between gap-3 rounded-xl border bg-surface-2/60 px-3.5 py-3', rowBorder(honest))}>
           <span className="flex items-center gap-2 text-[13px] text-ink-soft">
-            <CheckCircle2 className="size-4 text-ok" /> {t.tamperProbeHonest}
+            <CheckCircle2 className={cn('size-4', honest === 'idle' ? 'text-ink-mute' : 'text-ok')} /> {t.tamperProbeHonest}
           </span>
           <Badge tone={badgeTone(honest)}>{resultLabel(honest, 'honest')}</Badge>
         </div>
         <div className={cn('flex items-center justify-between gap-3 rounded-xl border bg-surface-2/60 px-3.5 py-3', rowBorder(tampered))}>
           <span className="flex items-center gap-2 text-[13px] text-ink-soft">
-            <Ban className="size-4 text-bad" /> {t.tamperProbeTampered}
+            <Ban className={cn('size-4', tampered === 'idle' ? 'text-ink-mute' : 'text-bad')} /> {t.tamperProbeTampered}
           </span>
           <Badge tone={badgeTone(tampered)}>{resultLabel(tampered, 'tampered')}</Badge>
         </div>
