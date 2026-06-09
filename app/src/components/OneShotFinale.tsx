@@ -136,6 +136,18 @@ function SnapshotSections({ t, lang }: { t: Dict; lang: 'en' | 'zh' }) {
 export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) {
   const reduce = useReducedMotion();
   const lang = (t.tally.for === '赞成' ? 'zh' : 'en') as 'en' | 'zh';
+  // Prefer the recorded snapshot's run (proposal + Venice + this exact tx) so the proof wall, the 7702
+  // check, and the receipt all describe the SAME run shown above; fall back to the pinned MAINNET_PROOF.
+  const proof = MAINNET_SNAPSHOT
+    ? {
+        rpc: MAINNET_SNAPSHOT.chain.rpc,
+        basescan: MAINNET_SNAPSHOT.chain.basescan,
+        burner: MAINNET_SNAPSHOT.oneshot.burner,
+        castVoteTx: MAINNET_SNAPSHOT.vote.txHash,
+        block: Number(MAINNET_SNAPSHOT.vote.blockNumber),
+        gasUsed: MAINNET_SNAPSHOT.oneshot.gasUsed,
+      }
+    : MAINNET_PROOF;
   const [phase, setPhase] = useState<Phase>('idle');
   const [step, setStep] = useState(0);
   const [code, setCode] = useState<string | null>(null);
@@ -153,17 +165,17 @@ export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) 
         await new Promise((r) => setTimeout(r, reduce ? 0 : 520));
         setStep(i);
       }
-      const client = createPublicClient({ chain: base, transport: http(MAINNET_PROOF.rpc) });
-      const c = await client.getCode({ address: MAINNET_PROOF.burner });
+      const client = createPublicClient({ chain: base, transport: http(proof.rpc) });
+      const c = await client.getCode({ address: proof.burner });
       setCode(c ?? '0x');
       let rc: { status: 'success' | 'reverted'; block: string; gasUsed: string; live: boolean } = {
         status: 'success',
-        block: String(MAINNET_PROOF.block),
-        gasUsed: String(MAINNET_PROOF.gasUsed),
+        block: String(proof.block),
+        gasUsed: String(proof.gasUsed),
         live: false,
       };
       try {
-        const r = await client.getTransactionReceipt({ hash: MAINNET_PROOF.castVoteTx });
+        const r = await client.getTransactionReceipt({ hash: proof.castVoteTx });
         rc = { status: r.status, block: r.blockNumber.toString(), gasUsed: r.gasUsed.toString(), live: true };
       } catch {
         /* keep the recorded fallback */
@@ -232,8 +244,8 @@ export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) 
       <div className={cn('mt-4 rounded-xl border bg-surface-2/60 px-4 py-3.5 transition-colors', parsed.upgraded ? 'border-brand/40' : 'border-hairline')}>
         <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-mute">
           {t.oneShotBurner}
-          <a className="font-mono text-info hover:underline" href={`${MAINNET_PROOF.basescan}/address/${MAINNET_PROOF.burner}`} target="_blank" rel="noreferrer">
-            {shortHex(MAINNET_PROOF.burner, 4)} ↗
+          <a className="font-mono text-info hover:underline" href={`${proof.basescan}/address/${proof.burner}`} target="_blank" rel="noreferrer">
+            {shortHex(proof.burner, 4)} ↗
           </a>
         </div>
         {phase === 'running' && !code && (
@@ -276,11 +288,11 @@ export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) 
         </div>
         <a
           className="mt-3 inline-flex items-center gap-1.5 font-mono text-[12px] text-info hover:underline"
-          href={`${MAINNET_PROOF.basescan}/tx/${MAINNET_PROOF.castVoteTx}`}
+          href={`${proof.basescan}/tx/${proof.castVoteTx}`}
           target="_blank"
           rel="noreferrer"
         >
-          {t.oneShotCastVoteTx} {shortHex(MAINNET_PROOF.castVoteTx, 6)} <ExternalLink className="size-3" />
+          {t.oneShotCastVoteTx} {shortHex(proof.castVoteTx, 6)} <ExternalLink className="size-3" />
         </a>
         {phase === 'running' && !receipt && (
           <div className="mt-2 font-mono text-[11px] text-ink-mute motion-safe:animate-pulse">{t.oneShotReceiptReading}</div>

@@ -62,6 +62,7 @@ import {
   reseedProposal,
   resolveModel,
   send7710Transaction,
+  statusTxHash,
   synthesizeVerdict,
   toVeniceTrace,
   withVotingPolicy,
@@ -115,6 +116,11 @@ function envKey(name: string): Hex {
   return v as Hex;
 }
 
+function argValue(name: string): string | undefined {
+  const i = process.argv.indexOf(name);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+}
+
 const sleepS = (s: number) => new Promise((r) => setTimeout(r, s * 1000));
 
 /**
@@ -153,17 +159,25 @@ async function main(): Promise<void> {
   loadDotenv({ path: path.join(REPO_ROOT, '.env') });
   const estimateOnly = process.argv.includes('--estimate');
   const reseed = process.argv.includes('--reseed');
+  // --finalize <voteTx> --proposal <id>: skip reseed + relay, reuse an ALREADY-CAST 1Shot vote and just
+  // re-run Venice (no broadcast) to assemble the snapshot. For recovering a run whose relay succeeded.
+  const finalizeTx = argValue('--finalize') as Hex | undefined;
+  const proposalOverride = argValue('--proposal');
   const net = network(process.argv.includes('--mainnet'));
 
   console.log(`\n● network: ${net.name} (${net.chainId}) · relayer ${net.relayer} · governor ${net.governor}`);
 
   // The displayed/Venice-analyzed proposal == PROPOSALS[0] ("Renew core-dev team budget"); the on-chain
-  // castVote targets the governor proposalId (a fresh Active one with --reseed, else addresses.ts's).
+  // castVote targets the governor proposalId (a fresh Active one with --reseed, else override/addresses).
   const proposal = PROPOSALS[0];
   const proposalText = proposal.body.en;
 
   const client = createPublicClient({ chain: net.chain, transport: http(net.rpc) }) as PublicClient;
-  const proposalId = reseed ? await reseedAndWaitActive(client, net) : BigInt(net.proposalId);
+  const proposalId = finalizeTx
+    ? BigInt(proposalOverride ?? net.proposalId)
+    : reseed
+      ? await reseedAndWaitActive(client, net)
+      : BigInt(net.proposalId);
   console.log(`● proposal: "${proposal.title.en}"  on-chain id ${proposalId.toString().slice(0, 12)}…\n`);
 
   // ── 1) VENICE TEE: 4 lenses in parallel → synthesis → final support ───────────────────────────
@@ -228,33 +242,43 @@ async function main(): Promise<void> {
     { target: net.governor, value: '0', data: castVoteData },
   ];
 
-  const estParams = buildSend7710Params({ chainId: net.chainId, permissionContext: [signedDelegation], executions: execs(minFeeAtoms), authorizationList });
-  const est = await estimate7710Transaction(estParams, net.relayerUrl);
-  if (!est.success) throw new Error(`estimate failed: ${JSON.stringify(est.error)}`);
-  const feeAtoms = floorFee(BigInt(est.requiredPaymentAmount ?? '0'), minFeeAtoms);
-  console.log(`● estimate ok: fee ${Number(feeAtoms) / 10 ** Number(usdc.decimals)} USDC`);
+  let voteTx: Hex;
+  let feeAtoms = minFeeAtoms;
+  if (finalizeTx) {
+    // recovery: the relay already happened; just reuse the on-chain vote tx (no broadcast).
+    voteTx = finalizeTx;
+    console.log(`● finalize: reusing already-cast 1Shot vote ${voteTx} (no broadcast)`);
+  } else {
+    const estParams = buildSend7710Params({ chainId: net.chainId, permissionContext: [signedDelegation], executions: execs(minFeeAtoms), authorizationList });
+    const est = await estimate7710Transaction(estParams, net.relayerUrl);
+    if (!est.success) throw new Error(`estimate failed: ${JSON.stringify(est.error)}`);
+    feeAtoms = floorFee(BigInt(est.requiredPaymentAmount ?? '0'), minFeeAtoms);
+    console.log(`● estimate ok: fee ${Number(feeAtoms) / 10 ** Number(usdc.decimals)} USDC`);
 
-  if (estimateOnly) {
-    console.log('\n--estimate only — no broadcast. Re-run without --estimate to relay + record.\n');
-    return;
-  }
-
-  const sendParams = { ...buildSend7710Params({ chainId: net.chainId, permissionContext: [signedDelegation], executions: execs(feeAtoms), authorizationList }), context: est.context };
-  const taskId = await send7710Transaction(sendParams, net.relayerUrl);
-  console.log(`● submitted — taskId ${taskId}`);
-
-  let voteTx: Hex | undefined;
-  for (let i = 0; i < 60; i++) {
-    const st = await getStatus(taskId, net.relayerUrl);
-    console.log(`   ${relayStatusLabel(st.status)} (${st.status})${st.hash ? ` · ${st.hash}` : ''}`);
-    if (isTerminalStatus(st.status)) {
-      if (st.status !== 200) throw new Error(`relay ${relayStatusLabel(st.status)}: ${st.message ?? ''}`);
-      voteTx = st.hash;
-      break;
+    if (estimateOnly) {
+      console.log('\n--estimate only — no broadcast. Re-run without --estimate to relay + record.\n');
+      return;
     }
-    await sleep(3000);
+
+    const sendParams = { ...buildSend7710Params({ chainId: net.chainId, permissionContext: [signedDelegation], executions: execs(feeAtoms), authorizationList }), context: est.context };
+    const taskId = await send7710Transaction(sendParams, net.relayerUrl);
+    console.log(`● submitted — taskId ${taskId}`);
+
+    let tx: Hex | undefined;
+    for (let i = 0; i < 60; i++) {
+      const st = await getStatus(taskId, net.relayerUrl);
+      const h = statusTxHash(st);
+      console.log(`   ${relayStatusLabel(st.status)} (${st.status})${h ? ` · ${h}` : ''}`);
+      if (isTerminalStatus(st.status)) {
+        if (st.status !== 200) throw new Error(`relay ${relayStatusLabel(st.status)}: ${st.message ?? ''}`);
+        tx = h;
+        break;
+      }
+      await sleep(3000);
+    }
+    if (!tx) throw new Error('relay confirmed but no tx hash returned');
+    voteTx = tx;
   }
-  if (!voteTx) throw new Error('relay did not reach a terminal status in time');
 
   const receipt = await client.getTransactionReceipt({ hash: voteTx });
   const upgraded = is7702Upgraded((await client.getCode({ address: burnerEoa.address })) as Hex);
@@ -265,7 +289,7 @@ async function main(): Promise<void> {
     recordedAt: new Date().toISOString(),
     chain: { id: net.chainId, name: net.name, rpc: net.rpc, basescan: net.basescan },
     relayer: net.relayer,
-    proposal: { id: net.proposalId, title: proposal.title, body: proposal.body },
+    proposal: { id: proposalId.toString(), title: proposal.title, body: proposal.body },
     participants: { user: burnerSA.address, orchestrator: burnerSA.address, analyst: targetAddress },
     venice, lenses,
     vote: { txHash: voteTx, support, blockNumber: receipt.blockNumber.toString(), relay: '1shot' },

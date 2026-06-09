@@ -74,6 +74,7 @@ export {
   relayerCall,
   relayStatusLabel,
   send7710Transaction,
+  statusTxHash,
   verifyWebhookSignature,
 } from './oneshot.js';
 export type { PaymentRequired, PaymentRequirements } from './x402.js';

@@ -147,10 +147,17 @@ export function estimate7710Transaction(
 export interface RelayTaskStatus {
   status: number;
   message?: string;
+  /** Some responses carry the tx hash only inside `receipt.transactionHash`, not at the top level. */
   hash?: Hex;
+  receipt?: { transactionHash?: Hex; blockNumber?: string; gasUsed?: string; blockHash?: Hex };
 }
 export function getStatus(taskId: Hex, url = ONESHOT_RELAYER_URL): Promise<RelayTaskStatus> {
-  return relayerCall<RelayTaskStatus>(url, 'relayer_getStatus', { id: taskId, logs: true });
+  return relayerCall<RelayTaskStatus>(url, 'relayer_getStatus', { id: taskId, logs: false });
+}
+
+/** The relayed tx hash, wherever the relayer put it (top-level `hash` or `receipt.transactionHash`). */
+export function statusTxHash(st: RelayTaskStatus): Hex | undefined {
+  return st.hash ?? st.receipt?.transactionHash;
 }
 
 // --- webhook signature verification (Ed25519 against the relayer JWKS) -------
