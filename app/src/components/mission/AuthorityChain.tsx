@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { animate, useReducedMotion } from 'motion/react';
-import { Bot, Boxes, CheckCircle2, Coins, Cpu, ExternalLink, Filter, Gavel, Lock, Receipt, Rocket, Scale, Scissors, ShieldCheck, Sparkles, TrendingUp, User, Users, Wallet, type LucideIcon } from 'lucide-react';
+import { Bot, Boxes, CheckCircle2, Coins, Cpu, ExternalLink, Filter, Fuel, Gavel, Lock, Receipt, Rocket, Scale, Scissors, ShieldCheck, Sparkles, TrendingUp, User, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { LENSES, type Decision, type LensKey, type LensVerdict } from '@mandate/shared';
 import { BASESCAN, shortHex } from '../../lib/config';
 import { ORDER } from '../../lib/runState';
@@ -685,20 +685,28 @@ function MainnetRelayFlow({
     };
   }, [container, burnerRef, synthRef, oneShotRef, boardRef]);
   if (!g) return null;
-  const coin = (to: { x: number; y: number }, cls: string, key: string) => (
-    <span key={key} className={`relay-coin ${cls}`} style={{ left: g.burner.x, top: g.burner.y, '--dx': `${to.x - g.burner.x}px`, '--dy': `${to.y - g.burner.y}px` } as CSSProperties} />
-  );
+  // A coin travels ONLY in the gap between the two node circles (start/end offset to the node edges,
+  // not the centres), so it never pierces a node. The CSS fades it in/out at both ends.
+  const R = 37; // main-node radius (30) + clearance
+  const coin = (to: { x: number; y: number }, cls: string, key: string) => {
+    const dx = to.x - g.burner.x;
+    const dy = to.y - g.burner.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const sx = g.burner.x + (dx / len) * R;
+    const sy = g.burner.y + (dy / len) * R;
+    const ex = to.x - (dx / len) * R;
+    const ey = to.y - (dy / len) * R;
+    return <span key={key} className={`relay-coin ${cls}`} style={{ left: sx, top: sy, '--dx': `${ex - sx}px`, '--dy': `${ey - sy}px` } as CSSProperties} />;
+  };
   return (
     <>
-      {/* the burner's USDC wallet */}
-      <span className="pay-wallet" style={{ left: g.burner.x, top: g.burner.y + 30 }}>
-        <Coins size={12} />
-      </span>
-      {/* two looping coins: gold = x402 (→终裁), cyan = relay fee (→1Shot) */}
+      {/* two looping USDC coins in the beam gaps: gold = x402 (→终裁), cyan = relay fee (→1Shot) */}
       {live && coin(g.synth, 'gold', 'x402')}
       {live && coin(g.oneShot, 'cyan', 'fee')}
-      {/* the gas-abstraction label on the 1Shot→VoteBoard beam */}
-      <div className="relay-gas-label" style={{ left: g.gasMid.x, top: g.gasMid.y - 16 }}>⛽ gas: 1Shot · ETH</div>
+      {/* the gas-abstraction label, tucked UNDER the 1Shot→VoteBoard beam (clear of the top bar) */}
+      <div className="relay-gas-label" style={{ left: g.gasMid.x, top: g.gasMid.y + 24 }}>
+        <Fuel size={11} /> gas · 1Shot · ETH
+      </div>
     </>
   );
 }
