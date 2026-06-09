@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { animate, useReducedMotion } from 'motion/react';
-import { Bot, Boxes, CheckCircle2, Coins, Cpu, ExternalLink, Filter, Fuel, Gavel, Lock, Receipt, Rocket, Scale, Scissors, ShieldCheck, Sparkles, TrendingUp, User, Users, Wallet, type LucideIcon } from 'lucide-react';
+import { Bot, Boxes, CheckCircle2, Coins, Cpu, ExternalLink, Filter, Fuel, Gavel, Lock, Package, Radio, Receipt, Rocket, Scale, Scissors, ShieldCheck, Sparkles, TrendingUp, User, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { LENSES, type Decision, type LensKey, type LensVerdict } from '@mandate/shared';
 import { BASESCAN, shortHex } from '../../lib/config';
 import { ORDER } from '../../lib/runState';
@@ -277,11 +277,15 @@ function Beam({
   );
 }
 
+type ChipPos = 'you' | 'orch' | 'synth' | 'burner' | 'oneShot' | 'board';
+
 function ScopeChip({
   container,
   youRef,
   orchRef,
   synthRef,
+  burnerRef,
+  oneShotRef,
   boardRef,
   pos,
   attenuated,
@@ -292,13 +296,15 @@ function ScopeChip({
   youRef: DivRef;
   orchRef: DivRef;
   synthRef: DivRef;
+  burnerRef?: DivRef;
+  oneShotRef?: DivRef;
   boardRef: DivRef;
-  pos: 'you' | 'orch' | 'synth' | 'board';
+  pos: ChipPos;
   attenuated: boolean;
   label: string;
   icon: LucideIcon;
 }) {
-  const [xs, setXs] = useState<{ you: number; orch: number; synth: number; board: number; topY: number } | null>(null);
+  const [xs, setXs] = useState<{ you: number; orch: number; synth: number; burner?: number; oneShot?: number; board: number; topY: number } | null>(null);
   const reduce = useReducedMotion();
   useEffect(() => {
     const compute = () => {
@@ -314,6 +320,8 @@ function ScopeChip({
         you: cx(youRef.current),
         orch: cx(orchRef.current),
         synth: cx(synthRef.current),
+        burner: burnerRef?.current ? cx(burnerRef.current) : undefined,
+        oneShot: oneShotRef?.current ? cx(oneShotRef.current) : undefined,
         board: cx(boardRef.current),
         topY: orchTop - 30,
       });
@@ -326,12 +334,13 @@ function ScopeChip({
       ro.disconnect();
       window.removeEventListener('resize', compute);
     };
-  }, [container, youRef, orchRef, synthRef, boardRef]);
+  }, [container, youRef, orchRef, synthRef, burnerRef, oneShotRef, boardRef]);
   if (!xs) return null;
   // The scope token (the delegation) rides You → Orchestrator → Arbiter (the cast point) → VoteBoard
-  // (the on-chain vote); the four lenses are decision agents, not delegation hops, so it floats over them.
-  // It glides between the circle x-positions (left transition) while its icon+label morph in (keyed).
-  const x = xs[pos];
+  // (the on-chain vote); on the mainnet leg it also rides Burner → 1Shot. The four lenses are decision
+  // agents, not delegation hops, so it floats over them. It glides between circle x-positions while its
+  // icon+label morph in (keyed).
+  const x = xs[pos] ?? xs.synth;
   return (
     <div className="scope-chip-entry" style={{ position: 'absolute', left: 0, top: xs.topY, transform: `translate(calc(${x}px - 50%), 0)`, zIndex: 3, pointerEvents: 'none', transition: reduce ? 'none' : 'transform .85s var(--ease-fluid)', willChange: 'transform' }}>
       <span
@@ -884,19 +893,31 @@ export function AuthorityChain({
   const synthThinking = beamLive('decided') && !nodeLit('decided');
   const verdictFor = (key: LensKey) => lenses?.find((l) => l.lens === key);
 
-  // The scope token rides You → Orchestrator → Arbiter (cast point) → VoteBoard, its icon + label
-  // morphing at each hop: full grant → narrowed → adjudicated → voted.
-  const chipPos: 'you' | 'orch' | 'synth' | 'board' = beamLive('voted')
-    ? 'board'
-    : beamLive('decided')
-      ? 'synth'
-      : beamLive('redelegated')
-        ? 'orch'
-        : 'you';
-  const SCOPE_STAGES: Record<typeof chipPos, { label: string; icon: LucideIcon }> = {
+  // The scope token rides You → Orchestrator → Arbiter, then on the mainnet leg through Burner → 1Shot →
+  // VoteBoard (testnet jumps Arbiter → VoteBoard), its icon + label morphing at each hop: full grant →
+  // narrowed → adjudicated → signed (7710 bundle) → relaying → voted.
+  const chipPos: ChipPos =
+    oneShot && beamLive('voted')
+      ? relayLit >= 2
+        ? 'board'
+        : relayLit >= 1
+          ? 'oneShot'
+          : relayLit >= 0
+            ? 'burner'
+            : 'synth'
+      : beamLive('voted')
+        ? 'board'
+        : beamLive('decided')
+          ? 'synth'
+          : beamLive('redelegated')
+            ? 'orch'
+            : 'you';
+  const SCOPE_STAGES: Record<ChipPos, { label: string; icon: LucideIcon }> = {
     you: { label: t.scopeChipOrigin, icon: Lock },
     orch: { label: t.scopeChip, icon: Filter },
     synth: { label: t.scopeChipDecided, icon: Gavel },
+    burner: { label: t.scopeChipBundled, icon: Package },
+    oneShot: { label: t.scopeChipRelaying, icon: Radio },
     board: { label: t.scopeChipVoted, icon: CheckCircle2 },
   };
   const scope = SCOPE_STAGES[chipPos];
@@ -1017,9 +1038,11 @@ export function AuthorityChain({
           youRef={youRef}
           orchRef={orchRef}
           synthRef={synthRef}
+          burnerRef={oneShot ? burnerRef : undefined}
+          oneShotRef={oneShot ? oneShotRef : undefined}
           boardRef={boardRef}
           pos={chipPos}
-          attenuated={chipPos === 'synth' || chipPos === 'board'}
+          attenuated={chipPos !== 'you' && chipPos !== 'orch'}
           label={scope.label}
           icon={scope.icon}
         />

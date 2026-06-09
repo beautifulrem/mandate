@@ -58,6 +58,8 @@ const en = {
   scopeChip: '4 caveats',
   scopeChipOrigin: 'full grant',
   scopeChipDecided: 'adjudicated',
+  scopeChipBundled: '7710 bundle',
+  scopeChipRelaying: 'relaying…',
   scopeChipVoted: 'voted',
   nodes: {
     you: { who: 'You', role: 'grant the permission' },
@@ -252,6 +254,8 @@ const zh: Dict = {
   scopeChip: '4 条 caveat',
   scopeChipOrigin: '完整授权',
   scopeChipDecided: '已裁决',
+  scopeChipBundled: '7710 bundle',
+  scopeChipRelaying: '中继中…',
   scopeChipVoted: '已投票',
   nodes: {
     you: { who: '你', role: '授予权限' },
