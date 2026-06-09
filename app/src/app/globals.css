@@ -458,6 +458,9 @@ html, body { height: 100%; overflow: hidden; }
 /* the scope token's label+icon morph (soft fade/blur/rise) each time it advances You→Orch→Arbiter→Board */
 .mc-scopechip-morph { animation: chipMorph 0.45s var(--ease-fluid) both; }
 @keyframes chipMorph { 0% { opacity: 0; transform: translateY(3px) scale(0.92); filter: blur(2px); } 100% { opacity: 1; transform: none; filter: blur(0); } }
+/* the scope chip (delegation token) fades in when it first appears near the You node */
+.scope-chip-entry { animation: scopeChipReveal 0.55s 0.12s var(--ease-fluid) both; }
+@keyframes scopeChipReveal { from { opacity: 0; } }
 
 /* capability dock — x402 + 1Shot surfaced as native high-value cards */
 .mc-dock { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
@@ -622,6 +625,15 @@ html, body { height: 100%; overflow: hidden; }
 .pay-venice-label { position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); white-space: nowrap;
   font-family: var(--font-display); font-size: 9.5px; font-weight: 700; letter-spacing: 0.03em; color: var(--color-info); }
 
+/* 1Shot flow graph — compact horizontal chain in the popover */
+.oneshot-disc { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 999px;
+  border: 1.5px solid var(--color-hairline); background: rgba(20, 25, 37, 0.88); color: var(--color-ink-mute);
+  transition: all 0.5s var(--ease-fluid); }
+.oneshot-disc.on { border-color: rgba(56, 224, 255, 0.55); background: rgba(56, 224, 255, 0.08); color: var(--color-cyan);
+  box-shadow: 0 0 0 4px rgba(56, 224, 255, 0.07), 0 0 14px rgba(56, 224, 255, 0.22); }
+.oneshot-beam-lit { background: linear-gradient(90deg, var(--color-cyan-deep), var(--color-cyan));
+  box-shadow: 0 0 6px rgba(56, 224, 255, 0.35); }
+
 @keyframes ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .mc-thinking { animation: pulse 1.6s ease-in-out infinite; }
@@ -646,12 +658,14 @@ html, body { height: 100%; overflow: hidden; }
   .data-packet { animation: none; opacity: 0; }
   .pay-enclave { transition: none; }
   .pay-venice, .pay-venice-disc { transition: none; }
+  .oneshot-disc { transition: none; }
   .mc-thinking { animation: none; }
   .mc-pop.right, .mc-pop.left { animation: none; }
   .mc-phase.current .pd { animation: none; }
   .mc-chip.met { animation: none; }
   .mc-verdict-pop { animation: none; }
   .mc-scopechip-morph { animation: none; }
+  .scope-chip-entry { animation: none; }
   .mc-tallybar span { transition: none; }
   .mc-dot { transition: none; }
   .mc-pop { transition: none; }

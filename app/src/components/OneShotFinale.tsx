@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
-import { AlertTriangle, CheckCircle2, Cpu, ExternalLink, Play, Radio, Rocket } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Coins, Cpu, ExternalLink, Lock, Play, Radio, Rocket, Scale, Sparkles, type LucideIcon } from 'lucide-react';
 import { MAINNET_PROOF, RELAY_PHASES, parse7702Code } from '../lib/oneshot-finale';
+import { MAINNET_SNAPSHOT } from '../lib/mainnet-snapshot';
 import { shortHex } from '../lib/config';
 import { cn } from '../lib/cn';
 import type { Dict } from '../lib/i18n';
@@ -14,13 +15,127 @@ import { Badge, TrackTag } from './ui/Badge';
 
 type Phase = 'idle' | 'running' | 'done';
 
+const FLOW_NODES: { icon: LucideIcon; label: string; at: number }[] = [
+  { icon: Lock, label: '7710', at: 1 },
+  { icon: Rocket, label: '1Shot', at: 1 },
+  { icon: Cpu, label: 'Burner', at: 2 },
+  { icon: CheckCircle2, label: 'castVote', at: 3 },
+];
+
+function OneShotFlow({ step, upgraded }: { step: number; upgraded: boolean }) {
+  return (
+    <div className="mb-4 flex items-start">
+      {FLOW_NODES.map((n, i) => (
+        <Fragment key={n.label}>
+          {i > 0 && (
+            <div className="min-w-[16px] flex-1" style={{ paddingTop: 15 }}>
+              <div className={cn('h-[1.5px] w-full rounded-full transition-all duration-700', step >= n.at ? 'oneshot-beam-lit' : 'bg-line')} />
+            </div>
+          )}
+          <div className="flex flex-col items-center" style={{ flex: '0 0 auto', minWidth: 48 }}>
+            <span className={cn('oneshot-disc', step >= n.at && 'on')}>
+              <n.icon size={14} strokeWidth={1.8} />
+            </span>
+            <span className={cn('mt-1.5 whitespace-nowrap text-[9.5px] font-bold tracking-wide transition-colors duration-500', step >= n.at ? 'text-cyan' : 'text-ink-mute')}>
+              {n.label}
+            </span>
+            {n.label === 'Burner' && step >= 2 && (
+              <span className="text-[8px] font-semibold text-cyan/70">
+                {upgraded ? '7702 ✓ · 0 ETH' : '7702 · 0 ETH'}
+              </span>
+            )}
+          </div>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function SectionHeader({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <div className="mb-2 flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-mute">
+      <Icon className="size-3.5" /> {label}
+    </div>
+  );
+}
+
+function SnapshotSections({ t, lang }: { t: Dict; lang: 'en' | 'zh' }) {
+  if (!MAINNET_SNAPSHOT) return null;
+  const s = MAINNET_SNAPSHOT;
+  const bs = s.chain.basescan;
+
+  return (
+    <>
+      {/* proposal context */}
+      <div className="rounded-xl border border-hairline bg-surface-2/60 px-4 py-3">
+        <SectionHeader icon={Scale} label={t.oneShotProposalLabel} />
+        <div className="text-[13px] font-semibold text-ink">{s.proposal.title[lang]}</div>
+        <div className="mt-1 text-[11.5px] leading-snug text-ink-mute">{s.proposal.body[lang]}</div>
+      </div>
+
+      {/* Venice TEE decision */}
+      <div className="rounded-xl border border-info/25 bg-info/[0.04] px-4 py-3">
+        <SectionHeader icon={Sparkles} label={t.oneShotVeniceLabel} />
+        <div className="flex items-center gap-2">
+          <Badge tone={s.venice.decision === 'For' ? 'ok' : s.venice.decision === 'Against' ? 'bad' : 'warn'}>
+            {s.venice.decision}
+          </Badge>
+          <span className="font-mono text-[11px] text-ink-mute">{s.venice.model}</span>
+          {s.venice.attestation.verified && <Badge tone="info">TEE ✓</Badge>}
+        </div>
+        <div className="mt-2 text-[11.5px] leading-snug text-ink-soft">{s.venice.rationale}</div>
+
+        {/* 4 lens verdicts */}
+        {s.lenses.length > 0 && (
+          <div className="mt-3">
+            <div className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-wider text-ink-mute">{t.oneShotLensesLabel}</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {s.lenses.map((l) => (
+                <div key={l.lens} className="flex items-center gap-1.5 rounded-lg border border-hairline bg-surface/60 px-2 py-1.5">
+                  <span className={cn('size-1.5 rounded-full', l.decision === 'For' ? 'bg-ok' : l.decision === 'Against' ? 'bg-bad' : 'bg-warn')} />
+                  <span className="text-[10.5px] font-semibold text-ink-soft">{t.presets[l.lens]}</span>
+                  <span className={cn('ml-auto text-[10px] font-bold', l.decision === 'For' ? 'text-ok' : l.decision === 'Against' ? 'text-bad' : 'text-warn')}>
+                    {l.decision}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* x402 toll — only when a toll was settled alongside this run */}
+      {s.toll && (
+        <div className="rounded-xl border border-brand/25 bg-brand/[0.04] px-4 py-3">
+          <SectionHeader icon={Coins} label={t.oneShotTollLabel} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="brand">1 mUSDC</Badge>
+            <a
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-info hover:underline"
+              href={`${bs}/tx/${s.toll.txHash}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {shortHex(s.toll.txHash, 6)} <ExternalLink className="size-2.5" />
+            </a>
+          </div>
+          <div className="mt-1.5 font-mono text-[10.5px] text-ink-mute">
+            {shortHex(s.toll.buyer, 4)} → {shortHex(s.toll.seller, 4)}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /**
- * The 1Shot mainnet finale (Best 1Shot + 7702 + 7710 mainnet relay). Honestly labelled a replay
- * of the real relay: the stepper + tx + USDC fee are pinned real artifacts, but the 7702-upgrade
- * proof is a GENUINELY LIVE, free, read-only eth_getCode on Base mainnet — no wallet, no gas.
+ * The 1Shot mainnet finale. When a MAINNET_SNAPSHOT is populated, shows the complete story:
+ * proposal context, Venice TEE decision, x402 toll, and the 1Shot relay proof.
+ * The 7702-upgrade check is GENUINELY LIVE (free, read-only eth_getCode on Base mainnet).
  */
 export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) {
   const reduce = useReducedMotion();
+  const lang = (t.tally.for === '赞成' ? 'zh' : 'en') as 'en' | 'zh';
   const [phase, setPhase] = useState<Phase>('idle');
   const [step, setStep] = useState(0);
   const [code, setCode] = useState<string | null>(null);
@@ -41,8 +156,6 @@ export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) 
       const client = createPublicClient({ chain: base, transport: http(MAINNET_PROOF.rpc) });
       const c = await client.getCode({ address: MAINNET_PROOF.burner });
       setCode(c ?? '0x');
-      // confirmed receipt (block + gas, not just a hash): try a live read, fall back to the
-      // recorded values — either way it's the real tx, verifiable via the BaseScan link.
       let rc: { status: 'success' | 'reverted'; block: string; gasUsed: string; live: boolean } = {
         status: 'success',
         block: String(MAINNET_PROOF.block),
@@ -63,9 +176,15 @@ export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) 
     }
   }
 
+  const parsed = parse7702Code(code);
+
   if (phase === 'idle') {
     return (
       <Panel tone="eth" pad="lg" bare={bare} className={`${bare ? '' : 'mb-3.5 '}flex flex-col items-center gap-3 text-center`}>
+        <OneShotFlow step={0} upgraded={false} />
+        {MAINNET_SNAPSHOT && (
+          <div className="text-[11px] text-ink-mute">{t.oneShotReplayNote}</div>
+        )}
         <div className="flex items-center justify-center gap-2 text-[13px] text-ink-soft">
           <Radio className="size-4 shrink-0 text-[#8aa0f0]" /> {t.oneShotCtaHint}
         </div>
@@ -76,8 +195,6 @@ export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) 
     );
   }
 
-  const parsed = parse7702Code(code);
-
   return (
     <Panel tone="eth" pad="lg" bare={bare} className={bare ? '' : 'mb-3.5'}>
       <PanelHeader
@@ -87,8 +204,14 @@ export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) 
         right={<Badge tone="eth">{t.oneShotMainnet}</Badge>}
       />
 
-      {/* relay lifecycle — a vertical step log; each phase explains what the 1Shot relayer does */}
-      <div className="flex flex-col gap-2.5">
+      {/* visual flow: 7710 → 1Shot → Burner(7702) → castVote */}
+      <OneShotFlow step={step} upgraded={parsed.upgraded} />
+
+      {/* snapshot sections: proposal + Venice + x402 (only when snapshot is populated) */}
+      {phase === 'done' && <SnapshotSections t={t} lang={lang} />}
+
+      {/* relay lifecycle stepper */}
+      <div className={cn('flex flex-col gap-2.5', phase === 'done' && MAINNET_SNAPSHOT && 'mt-4')}>
         {RELAY_PHASES.map((p, i) => {
           const state = step > i ? 'done' : step === i ? 'current' : 'idle';
           return (
@@ -182,7 +305,6 @@ export function OneShotFinale({ t, bare = false }: { t: Dict; bare?: boolean }) 
   );
 }
 
-/** A small "live read" chip — marks data fetched live on-chain (vs the replayed lifecycle steps). */
 function LiveTag({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-chip border border-info/30 bg-info/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-info">

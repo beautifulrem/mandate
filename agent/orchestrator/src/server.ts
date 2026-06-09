@@ -28,11 +28,17 @@ import { provisionSmartAccount } from './provision.js';
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 loadDotenv({ path: path.join(REPO_ROOT, '.env') });
 
+const chain = (process.env.MANDATE_CHAIN ?? 'sepolia') as 'sepolia' | 'mainnet';
+const isMainnet = chain === 'mainnet';
+const addrs = isMainnet ? ADDRESSES.baseMainnet : ADDRESSES.baseSepolia;
+
 const cfg: OrchestratorConfig = {
-  rpcUrl: process.env.BASE_SEPOLIA_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+  rpcUrl: isMainnet
+    ? (process.env.BASE_MAINNET_RPC_URL || 'https://base-rpc.publicnode.com')
+    : (process.env.BASE_SEPOLIA_RPC_URL || 'https://base-sepolia-rpc.publicnode.com'),
   orchestratorPk: (process.env.ORCHESTRATOR_PK ?? '') as Hex,
   analystPk: (process.env.ANALYST_PK ?? '') as Hex,
-  paymentToken: ADDRESSES.baseSepolia.paymentToken as Address,
+  paymentToken: addrs.paymentToken as Address,
   veniceCfg: {
     apiUrl: process.env.VENICE_API_URL || 'https://api.venice.ai/api/v1',
     apiKey: process.env.VENICE_API_KEY || '',
@@ -149,11 +155,11 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && url.pathname === '/config') {
     return send(res, 200, {
-      chainId: 84532,
-      governor: ADDRESSES.baseSepolia.governor,
-      token: ADDRESSES.baseSepolia.token,
-      paymentToken: ADDRESSES.baseSepolia.paymentToken,
-      proposalId: ADDRESSES.baseSepolia.proposalId,
+      chainId: isMainnet ? 8453 : 84532,
+      governor: addrs.governor,
+      token: addrs.token,
+      paymentToken: addrs.paymentToken,
+      proposalId: addrs.proposalId,
       orchestratorSA: ADDRESSES.accounts.orchestrator,
       analyst: privateKeyToAccount(cfg.analystPk).address,
     });
