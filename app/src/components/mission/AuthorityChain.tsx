@@ -766,7 +766,7 @@ function MainnetRelayFlow({
   synthRef,
   oneShotRef,
   boardRef,
-  live,
+  relayLit,
   relay,
   t,
 }: {
@@ -775,7 +775,8 @@ function MainnetRelayFlow({
   synthRef: DivRef;
   oneShotRef: DivRef;
   boardRef: DivRef;
-  live: boolean;
+  /** the cast-leg ratchet: -1 idle, 0 Burner lit, 1 1Shot lit, 2 VoteBoard reached. Drives each segment. */
+  relayLit: number;
   relay: { basescan: string; tollTx?: string; castTx?: string; tollUsdc: string; feeUsdc: string };
   t: Dict;
 }) {
@@ -807,19 +808,16 @@ function MainnetRelayFlow({
       window.removeEventListener('resize', compute);
     };
   }, [container, burnerRef, synthRef, oneShotRef, boardRef]);
-  // The coins/fuel fire ONCE when the cast lands (a one-shot, not a continuous stream), then stop; a
-  // fresh replay re-arms them. `firing` is the window the animations play — long enough for the
-  // burner→1Shot USDC coins AND the slightly-later 1Shot→board ETH fuel pulses to finish.
-  const [firing, setFiring] = useState(false);
+  // Each segment's particle fires the moment ITS hop lights (relayLit climbs 0→1→2), so the relay reads
+  // strictly left→right in true tx order instead of all the coins leaving at once. `epoch` bumps on every
+  // fresh cast (relayLit goes from idle back to live) so the one-shot CSS animations re-mount and replay.
+  const [epoch, setEpoch] = useState(0);
+  const prevLive = useRef(false);
   useEffect(() => {
-    if (!live) {
-      setFiring(false);
-      return;
-    }
-    setFiring(true);
-    const id = setTimeout(() => setFiring(false), 5200);
-    return () => clearTimeout(id);
-  }, [live]);
+    const live = relayLit >= 0;
+    if (live && !prevLive.current) setEpoch((e) => e + 1);
+    prevLive.current = live;
+  }, [relayLit]);
   if (!g) return null;
   // A particle travels ONLY in the gap between two node circles (offset to the rims, not the centres),
   // so it never pierces a node. The CSS fades it in/out at both ends.
@@ -836,15 +834,16 @@ function MainnetRelayFlow({
   };
   return (
     <>
-      {/* USDC coins the burner SPENDS, flowing INTO the recipients: gold = x402 (→终裁), cyan = fee (→1Shot) */}
-      {firing && travel(g.burner, g.synth, 'relay-coin gold', 'x402')}
-      {firing && travel(g.burner, g.oneShot, 'relay-coin cyan', 'fee')}
-      {/* ETH "fuel" that 1Shot FRONTS, flowing OUT of 1Shot to push the tx onto the board: a single
-          distinct hexagon pulse (not a round coin). The burner spends 0 ETH; 1Shot pays the real ETH
-          gas. One pulse only — fires after the USDC coins land, so the colours never pile up at once. */}
-      {firing && travel(g.oneShot, g.board, 'relay-fuel', 'eth1', 1.8)}
-      {/* the gas-abstraction label, tucked UNDER the 1Shot→VoteBoard beam; glows while the fuel fires */}
-      <div className={`relay-gas-label${firing ? ' firing' : ''}`} style={{ left: g.gasMid.x, top: g.gasMid.y + 24 }}>
+      {/* The relayed vote travels strictly LEFT→RIGHT, one segment per lit hop, in true tx order. Each
+          particle fires only once ITS hop lights (relayLit 0→1→2), in lockstep with the beam:
+            终裁→Burner  = the 7710 decision bundle handed to the burner (gold)
+            Burner→1Shot = the USDC relay fee the burner pays the relayer (cyan)
+            1Shot→Board  = the ETH gas 1Shot fronts to push castVote on-chain (violet hexagon) */}
+      {relayLit >= 0 && travel(g.synth, g.burner, 'relay-coin gold', `bundle-${epoch}`)}
+      {relayLit >= 1 && travel(g.burner, g.oneShot, 'relay-coin cyan', `fee-${epoch}`)}
+      {relayLit >= 2 && travel(g.oneShot, g.board, 'relay-fuel', `eth-${epoch}`)}
+      {/* the gas-abstraction label, tucked UNDER the 1Shot→VoteBoard beam; glows as the ETH pulse fires */}
+      <div className={`relay-gas-label${relayLit >= 2 ? ' firing' : ''}`} style={{ left: g.gasMid.x, top: g.gasMid.y + 24 }}>
         <Fuel size={11} /> {t.relayGasLabel}
       </div>
     </>
@@ -1114,7 +1113,7 @@ export function AuthorityChain({
         <>
           {/* the Venice TEE enclave + Venice AI node (the AI's decision platform) — same as testnet */}
           <VeniceEnclave container={containerRef} synthRef={synthRef} lensRefs={lensRefs} active={lensLit >= 0} flowing={lensLit >= 0 && !beamLive('voted')} killed={killed} />
-          <MainnetRelayFlow container={containerRef} burnerRef={burnerRef} synthRef={synthRef} oneShotRef={oneShotRef} boardRef={boardRef} live={relayLit >= 0} relay={relay} t={t} />
+          <MainnetRelayFlow container={containerRef} burnerRef={burnerRef} synthRef={synthRef} oneShotRef={oneShotRef} boardRef={boardRef} relayLit={relayLit} relay={relay} t={t} />
           {relay.tollTx && <ReceiptTick container={containerRef} nodeRef={synthRef} txHash={relay.tollTx} basescan={relay.basescan} title="x402 toll ↗" />}
           {relay.castTx && <ReceiptTick container={containerRef} nodeRef={oneShotRef} txHash={relay.castTx} basescan={relay.basescan} title="1Shot castVote ↗" />}
         </>
