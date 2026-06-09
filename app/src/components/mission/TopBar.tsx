@@ -13,7 +13,22 @@ import { StatusDot } from '../ui/Badge';
  * render-prop so real connect / account / chain modals stay wired — connecting itself lives in the
  * Smart-Account popover; here we only surface the connected identity.
  */
-export function TopBar({ lang, toggleLang, t }: { lang: Lang; toggleLang: () => void; t: Dict }) {
+export function TopBar({
+  lang,
+  toggleLang,
+  t,
+  network = 'sepolia',
+  toggleNetwork,
+  mainnetAvailable = false,
+}: {
+  lang: Lang;
+  toggleLang: () => void;
+  t: Dict;
+  network?: 'sepolia' | 'mainnet';
+  toggleNetwork?: () => void;
+  mainnetAvailable?: boolean;
+}) {
+  const isMainnet = network === 'mainnet';
   return (
     <header className="mc-topbar">
       <div className="flex items-center gap-2.5">
@@ -25,9 +40,24 @@ export function TopBar({ lang, toggleLang, t }: { lang: Lang; toggleLang: () => 
 
       <div className="flex items-center gap-2.5">
         <LangToggle lang={lang} onToggle={toggleLang} />
-        <span className="inline-flex items-center gap-2 rounded-chip border border-hairline bg-surface/60 px-3.5 py-1.5 text-xs font-semibold text-ink-soft backdrop-blur">
-          <StatusDot tone="ok" /> Base Sepolia
-        </span>
+        {mainnetAvailable && toggleNetwork ? (
+          <button
+            type="button"
+            onClick={toggleNetwork}
+            title="Switch network"
+            className={`inline-flex items-center gap-2 rounded-chip border px-3.5 py-1.5 text-xs font-semibold backdrop-blur transition-colors ${
+              isMainnet
+                ? 'border-info/45 bg-info/10 text-info hover:border-info/70'
+                : 'border-hairline bg-surface/60 text-ink-soft hover:border-brand/40 hover:text-ink'
+            }`}
+          >
+            <StatusDot tone={isMainnet ? 'info' : 'ok'} /> {isMainnet ? t.netMainnet : t.netSepolia}
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-2 rounded-chip border border-hairline bg-surface/60 px-3.5 py-1.5 text-xs font-semibold text-ink-soft backdrop-blur">
+            <StatusDot tone="ok" /> Base Sepolia
+          </span>
+        )}
 
         <ConnectButton.Custom>
           {({ account, chain, mounted, openAccountModal, openChainModal, openConnectModal }) => {

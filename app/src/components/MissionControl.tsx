@@ -10,7 +10,7 @@ import type { Dict, Lang } from '../lib/i18n';
 import { ORDER, reached } from '../lib/runState';
 import { useRatchet } from '../lib/useRatchet';
 import { DEFAULT_QUERY_BUDGET } from '../lib/x402-toll';
-import { decisionToSupport, useLiveTally, withOptimisticVote } from '../lib/useLiveTally';
+import { decisionToSupport, useLiveTally, withOptimisticVote, type TallySource } from '../lib/useLiveTally';
 import { ErrorToast } from './panels/ErrorToast';
 import { type VoteRecord } from './panels/VoteLog';
 import { NetworkField } from './mission/NetworkField';
@@ -85,6 +85,15 @@ export interface MissionVM {
   onGrant: () => void;
   onVoteActive: () => void;
   onRecall: () => void;
+  // mainnet replay (snapshot-driven; absent on the live testnet flow)
+  replayMode?: boolean;
+  replaying?: boolean;
+  onReplay?: () => void;
+  tallySource?: TallySource;
+  // network switch (Base Sepolia live ↔ Base mainnet replay)
+  network?: 'sepolia' | 'mainnet';
+  toggleNetwork?: () => void;
+  mainnetAvailable?: boolean;
 }
 
 const RAIL_TOP = 84;
@@ -118,7 +127,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
     { key: 'tally', icon: Vote, title: t.panels.tally },
     { key: 'x402', icon: Coins, title: t.panels.x402, dot: x402Settled },
     { key: 'oneshot', icon: Rocket, title: t.panels.oneshot },
-    { key: 'run', icon: Activity, title: t.panels.run, dot: runActive },
+    { key: 'run', icon: Activity, title: t.panels.run, dot: vm.running },
   ];
 
   const idx = panel ? rail.findIndex((r) => r.key === panel) : -1;
@@ -129,11 +138,15 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
   // tally popover all read this one source). Once the agent casts AS the user's smart account, the
   // vote shows here as a real 6th voter; until the next poll catches up, fold it in optimistically.
   const youVotedHere = !!vm.run?.vote && vm.run?.proposalId === vm.activeProposal.id.toString();
+  // In replay the AI's vote is already a REAL voter on the live board, so never optimistically re-fold it
+  // (that would double-count); the board's "voted" visual still uses youVotedHere. Live testnet folds the
+  // just-cast vote until the next poll catches up.
+  const foldOptimistic = youVotedHere && !vm.replayMode;
   const { tally, voters, live } = withOptimisticVote(
-    useLiveTally(vm.activeProposal.id, vm.activeProposal.seed),
+    useLiveTally(vm.activeProposal.id, vm.activeProposal.seed, vm.tallySource),
     vm.userSA?.address,
     decisionToSupport(vm.venice?.decision),
-    youVotedHere,
+    foldOptimistic,
   );
   const pips = { for_: tally.for_, against: tally.against, abstain: tally.abstain };
 
@@ -166,7 +179,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
       <NetworkField />
       <div className="mc-spotlight" aria-hidden="true" />
 
-      <TopBar lang={vm.lang} toggleLang={vm.toggleLang} t={t} />
+      <TopBar lang={vm.lang} toggleLang={vm.toggleLang} t={t} network={vm.network} toggleNetwork={vm.toggleNetwork} mainnetAvailable={vm.mainnetAvailable} />
       <IconRail items={rail} active={panel} onSelect={toggle} />
 
       <main className="mc-center hud-scroll">

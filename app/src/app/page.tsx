@@ -11,6 +11,8 @@ import { fireSever } from '../lib/sever';
 import { useAccount, useWalletClient } from 'wagmi';
 import { deriveSmartAccount, signGrant, type SmartAccount } from '../lib/wallet';
 import { MissionControl, type MissionVM } from '../components/MissionControl';
+import { useMainnetReplay } from '../lib/useMainnetReplay';
+import { MAINNET_SNAPSHOT } from '../lib/mainnet-snapshot';
 import { type VoteRecord } from '../components/panels/VoteLog';
 
 /**
@@ -20,6 +22,7 @@ import { type VoteRecord } from '../components/panels/VoteLog';
  */
 export default function Home() {
   const [lang, setLang] = useState<Lang>('en');
+  const [network, setNetwork] = useState<'sepolia' | 'mainnet'>('sepolia');
   const [cfg, setCfg] = useState<DemoConfig | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const { address, isConnected } = useAccount();
@@ -172,7 +175,7 @@ export default function Home() {
   // proposal that was just voted — they no longer drift to another proposal under the orange "voted"
   // board. Only a failed run re-opens rotation (so the judge can retry); the proposal chips still let
   // the user move manually at any time.
-  const rotationPaused = busy || (run != null && run.status !== 'failed');
+  const rotationPaused = busy || network === 'mainnet' || (run != null && run.status !== 'failed');
   useEffect(() => {
     if (rotationPaused) return;
     const id = setInterval(() => setActiveIdx((i) => (i + 1) % PROPOSALS.length), 24000);
@@ -334,5 +337,14 @@ export default function Home() {
     onRecall,
   };
 
-  return <MissionControl vm={vm} />;
+  // Mainnet replay: a completed Base-mainnet 1Shot run rebuilt from the snapshot (null until recorded).
+  const mainnetAvailable = !!MAINNET_SNAPSHOT;
+  const toggleNetwork = () => setNetwork((n) => (n === 'sepolia' ? 'mainnet' : 'sepolia'));
+  const replayVm = useMainnetReplay({ lang, t, toggleLang, graphStageRef });
+
+  const netProps = { network, toggleNetwork, mainnetAvailable };
+  const shown: MissionVM =
+    network === 'mainnet' && replayVm ? { ...replayVm, ...netProps } : { ...vm, ...netProps };
+
+  return <MissionControl vm={shown} />;
 }

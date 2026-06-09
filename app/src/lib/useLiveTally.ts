@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createPublicClient, http, type Address } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { createPublicClient, http, type Address, type Chain } from 'viem';
+import { base, baseSepolia } from 'viem/chains';
 import {
   DEMO_PERSONAS,
   VOTE_BOARD_ABI,
@@ -12,6 +12,13 @@ import {
 } from '@mandate/shared';
 import { RPC_URL } from './config';
 import { tallyBreakdown, tallyFromSeed, type TallyBreakdown } from './voteboard-view';
+
+/** Override the VoteBoard the tally reads from (used by the mainnet replay to read the Base-mainnet board). */
+export interface TallySource {
+  board: Address;
+  rpc: string;
+  mainnet?: boolean;
+}
 
 export type Choice = 0 | 1 | 2 | null;
 export interface VoterRow {
@@ -35,8 +42,12 @@ const seedVoters = (seed: readonly number[]): VoterRow[] =>
 export function useLiveTally(
   proposalId: bigint,
   seed: readonly number[],
+  source?: TallySource,
 ): { tally: TallyBreakdown; voters: VoterRow[]; live: boolean } {
-  const live = isVoteBoardLive(VOTE_BOARD_ADDRESS);
+  const board = source?.board ?? VOTE_BOARD_ADDRESS;
+  const rpc = source?.rpc ?? RPC_URL;
+  const chain: Chain = source?.mainnet ? base : baseSepolia;
+  const live = isVoteBoardLive(board);
   const [tally, setTally] = useState<TallyBreakdown>(() => tallyFromSeed(seed));
   const [voters, setVoters] = useState<VoterRow[]>(() => seedVoters(seed));
 
@@ -48,23 +59,23 @@ export function useLiveTally(
 
   useEffect(() => {
     if (!live) return;
-    const client = createPublicClient({ chain: baseSepolia, transport: http(RPC_URL) });
+    const client = createPublicClient({ chain, transport: http(rpc) });
     let cancelled = false;
     const poll = async () => {
       try {
         const [against, forV, abstain] = (await client.readContract({
-          address: VOTE_BOARD_ADDRESS,
+          address: board,
           abi: VOTE_BOARD_ABI,
           functionName: 'getTally',
           args: [proposalId],
         })) as [bigint, bigint, bigint];
         const addrs = (await client.readContract({
-          address: VOTE_BOARD_ADDRESS,
+          address: board,
           abi: VOTE_BOARD_ABI,
           functionName: 'getVoters',
           args: [proposalId],
         })) as readonly Address[];
-        // Personas reuse this proposal's seeded support; only an unknown voter (you) needs a read.
+        // Personas reuse this proposal's seeded support; only an unknown voter (you / the agent) needs a read.
         const rows: VoterRow[] = [];
         for (const a of addrs) {
           const idx = personaIndex(a);
@@ -72,7 +83,7 @@ export function useLiveTally(
             rows.push({ address: a, support: (seed[idx] ?? null) as Choice });
           } else {
             const s = (await client.readContract({
-              address: VOTE_BOARD_ADDRESS,
+              address: board,
               abi: VOTE_BOARD_ABI,
               functionName: 'getVote',
               args: [proposalId, a],
@@ -93,7 +104,7 @@ export function useLiveTally(
       cancelled = true;
       clearInterval(id);
     };
-  }, [live, proposalId, seed]);
+  }, [live, proposalId, seed, board, rpc, chain]);
 
   return { tally, voters, live };
 }
