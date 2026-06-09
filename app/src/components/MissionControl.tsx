@@ -61,6 +61,8 @@ export interface MissionVM {
   analystAddr?: string;
   /** the 7702 burner that casts via 1Shot (mainnet replay only). */
   burnerAddr?: string;
+  /** the VoteBoard the tally + cast landed on (mainnet board in replay; else the live testnet board). */
+  boardAddr?: string;
   killed: boolean;
   terminal: boolean;
   /** the latest run is for the proposal currently on screen (else the graph shows the resting mandate). */
@@ -209,7 +211,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
         <div ref={vm.graphStageRef} className="flex w-full justify-center">
           <AuthorityChain
             t={t}
-            parties={{ you: vm.youAddr, orch: vm.orchAddr, analyst: vm.analystAddr, board: VOTE_BOARD_ADDRESS, burner: vm.burnerAddr }}
+            parties={{ you: vm.youAddr, orch: vm.orchAddr, analyst: vm.analystAddr, board: vm.boardAddr ?? VOTE_BOARD_ADDRESS, burner: vm.burnerAddr }}
             shownIdx={revealIdx}
             instant={!liveRun}
             status={sEff}

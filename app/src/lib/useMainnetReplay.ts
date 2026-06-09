@@ -124,6 +124,7 @@ export function useMainnetReplay(statics: {
     orchAddr: burner,
     analystAddr: snap.toll?.seller ?? burner,
     burnerAddr: burner,
+    boardAddr: snap.voteBoard ?? board,
     killed: false,
     terminal: true,
     runOnActive: true,

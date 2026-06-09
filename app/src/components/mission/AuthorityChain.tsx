@@ -64,9 +64,11 @@ interface ChainNodeProps {
   pips?: Pips;
   /** a small highlighted chip under the role (e.g. the burner's "7702 ✓ · 0 ETH" gas-abstraction badge). */
   badge?: string;
+  /** the explorer base for the address link — defaults to the live (Sepolia) one; mainnet replay overrides it. */
+  basescan?: string;
 }
 
-function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, killed, board, small, floatBelow, result, tone, pips, badge }: ChainNodeProps) {
+function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, killed, board, small, floatBelow, result, tone, pips, badge, basescan = BASESCAN }: ChainNodeProps) {
   // One tone drives the whole circle (icon + ring + glow). Callers pass it explicitly: the lenses and
   // the Arbiter (终裁) by their verdict, the VoteBoard by the live tally (or brand once our vote lands).
   // You/Orchestrator default brand; a lens with no verdict yet stays cold info-blue.
@@ -130,7 +132,7 @@ function ChainNode({ nodeRef, icon: Icon, who, role, addr, active, working, kill
           decision lands — so nothing changes the node's height. The TeeConsole still shows the text. */}
       {addr && (
         <a
-          href={`${BASESCAN}/address/${addr}`}
+          href={`${basescan}/address/${addr}`}
           target="_blank"
           rel="noreferrer"
           style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-info)' }}
@@ -577,7 +579,7 @@ function PaymentFlow({
 
 /** A small gold receipt tick pinned to the seller (Arbiter) node once a real toll has settled for the
  *  shown proposal — links to the on-chain settlement tx. The main graph's "payment happened" proof. */
-function ReceiptTick({ container, nodeRef, txHash }: { container: DivRef; nodeRef: DivRef; txHash?: string }) {
+function ReceiptTick({ container, nodeRef, txHash, basescan = BASESCAN, title = 'x402 toll settled ↗' }: { container: DivRef; nodeRef: DivRef; txHash?: string; basescan?: string; title?: string }) {
   const [p, setP] = useState<{ x: number; y: number } | null>(null);
   useEffect(() => {
     const compute = () => {
@@ -615,7 +617,7 @@ function ReceiptTick({ container, nodeRef, txHash }: { container: DivRef; nodeRe
   return (
     <div style={{ position: 'absolute', left: p.x, top: p.y, transform: 'translate(-50%,-50%)', zIndex: 4, pointerEvents: txHash ? 'auto' : 'none' }}>
       {txHash ? (
-        <a href={`${BASESCAN}/tx/${txHash}`} target="_blank" rel="noreferrer" title="x402 toll settled ↗">
+        <a href={`${basescan}/tx/${txHash}`} target="_blank" rel="noreferrer" title={title}>
           {tick}
         </a>
       ) : (
@@ -810,11 +812,13 @@ export function AuthorityChain({
   // "voted" state drops away — the board returns to the plain tally color. The fan-in beams (lens→Arbiter)
   // and the cast beam (Arbiter→board) carry the verdict color instead of the old fixed orange / green.
   const boardTone: ToneKey = !killed && votedHere ? 'brand' : pips.for_ > pips.against ? 'ok' : 'bad';
+  // mainnet replay overrides every node's explorer link to Base mainnet (else the address ↗ opens Sepolia).
+  const bs = relay?.basescan;
 
   return (
     <div className={`chain${killed ? ' killed' : ''}`} ref={containerRef} style={{ width: '100%', maxWidth: 1120, alignItems: 'center' }}>
-      <ChainNode nodeRef={youRef} icon={User} who={t.nodes.you.who} role={t.nodes.you.role} addr={parties.you} active={connected} floatBelow killed={killed} />
-      <ChainNode nodeRef={orchRef} icon={Bot} who={t.nodes.orch.who} role={t.nodes.orch.role} addr={parties.orch} active={nodeLit('redelegated')} working={orchWorking} floatBelow killed={killed} />
+      <ChainNode nodeRef={youRef} icon={User} who={t.nodes.you.who} role={t.nodes.you.role} addr={parties.you} basescan={bs} active={connected} floatBelow killed={killed} />
+      <ChainNode nodeRef={orchRef} icon={Bot} who={t.nodes.orch.who} role={t.nodes.orch.role} addr={parties.orch} basescan={bs} active={nodeLit('redelegated')} working={orchWorking} floatBelow killed={killed} />
 
       {/* the four governance lenses (decision agents), stacked between the orchestrator and arbiter/终裁 */}
       <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', alignSelf: 'center' }}>
@@ -844,6 +848,7 @@ export function AuthorityChain({
         who={t.nodes.synthesis.who}
         role={t.nodes.synthesis.role}
         addr={parties.analyst}
+        basescan={bs}
         active={beamLive('decided')}
         working={synthThinking}
         result={nodeLit('decided') && synthDecision ? (synthDecision as Decision) : undefined}
@@ -861,6 +866,7 @@ export function AuthorityChain({
             who={t.burnerNode.who}
             role={t.burnerNode.role}
             addr={parties.burner}
+            basescan={bs}
             badge="7702 ✓ · 0 ETH"
             active={beamLive('voted')}
             working={beamLive('voted') && !nodeLit('voted')}
@@ -881,7 +887,7 @@ export function AuthorityChain({
           />
         </>
       )}
-      <ChainNode nodeRef={boardRef} icon={Boxes} who={t.nodes.board.who} role={t.nodes.board.role} addr={parties.board} active={connected} board tone={boardTone} floatBelow pips={pips} />
+      <ChainNode nodeRef={boardRef} icon={Boxes} who={t.nodes.board.who} role={t.nodes.board.role} addr={parties.board} basescan={bs} active={connected} board tone={boardTone} floatBelow pips={pips} />
 
       {/* You → Orchestrator (root), then fan-out to the lenses, fan-in to Arbiter (终裁), then to the board */}
       <Beam container={containerRef} from={youRef} to={orchRef} live={beamLive('redelegated')} killed={killed} cutting={cutting} root />
@@ -946,8 +952,8 @@ export function AuthorityChain({
       {oneShot && relay && (
         <>
           <MainnetRelayFlow container={containerRef} burnerRef={burnerRef} synthRef={synthRef} oneShotRef={oneShotRef} boardRef={boardRef} live={beamLive('voted')} relay={relay} />
-          {relay.tollTx && <ReceiptTick container={containerRef} nodeRef={synthRef} txHash={relay.tollTx} />}
-          {relay.castTx && <ReceiptTick container={containerRef} nodeRef={oneShotRef} txHash={relay.castTx} />}
+          {relay.tollTx && <ReceiptTick container={containerRef} nodeRef={synthRef} txHash={relay.tollTx} basescan={relay.basescan} title="x402 toll ↗" />}
+          {relay.castTx && <ReceiptTick container={containerRef} nodeRef={oneShotRef} txHash={relay.castTx} basescan={relay.basescan} title="1Shot castVote ↗" />}
         </>
       )}
     </div>
