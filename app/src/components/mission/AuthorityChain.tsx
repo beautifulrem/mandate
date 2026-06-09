@@ -17,8 +17,9 @@ const PACKET_MS = 850;
 // The four lenses light one-by-one this far apart, so the committee "reports in" in sequence.
 const LENS_STAGGER_MS = 480;
 // The mainnet cast hops (终裁 → Burner → 1Shot → VoteBoard) light one-by-one this far apart, so the
-// relayed vote visibly travels hop-by-hop instead of the whole leg flashing on at once.
-const RELAY_STAGGER_MS = 520;
+// relayed vote visibly travels hop-by-hop instead of the whole leg flashing on at once. Kept slow
+// enough that each hop reads, and that the burner's 700ms 7702 upgrade ring finishes within one step.
+const RELAY_STAGGER_MS = 900;
 
 const LENS_ICON: Record<LensKey, LucideIcon> = {
   fiscal: Coins,
@@ -793,7 +794,7 @@ function MainnetRelayFlow({
       return;
     }
     setFiring(true);
-    const id = setTimeout(() => setFiring(false), 3200);
+    const id = setTimeout(() => setFiring(false), 4200);
     return () => clearTimeout(id);
   }, [live]);
   if (!g) return null;
@@ -817,8 +818,8 @@ function MainnetRelayFlow({
       {firing && travel(g.burner, g.oneShot, 'relay-coin cyan', 'fee')}
       {/* ETH "fuel" that 1Shot FRONTS, flowing OUT of 1Shot to push the tx onto the board: a distinct
           hexagon pulse (not a round coin). The burner spends 0 ETH; 1Shot pays the real ETH gas. */}
-      {firing && travel(g.oneShot, g.board, 'relay-fuel', 'eth1', 1.05)}
-      {firing && travel(g.oneShot, g.board, 'relay-fuel', 'eth2', 1.5)}
+      {firing && travel(g.oneShot, g.board, 'relay-fuel', 'eth1', 1.55)}
+      {firing && travel(g.oneShot, g.board, 'relay-fuel', 'eth2', 2.25)}
       {/* the gas-abstraction label, tucked UNDER the 1Shot→VoteBoard beam; glows while the fuel fires */}
       <div className={`relay-gas-label${firing ? ' firing' : ''}`} style={{ left: g.gasMid.x, top: g.gasMid.y + 24 }}>
         <Fuel size={11} /> {t.relayGasLabel}
