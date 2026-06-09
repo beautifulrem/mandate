@@ -16,6 +16,9 @@ type DivRef = RefObject<HTMLDivElement | null>;
 const PACKET_MS = 850;
 // The four lenses light one-by-one this far apart, so the committee "reports in" in sequence.
 const LENS_STAGGER_MS = 480;
+// The mainnet cast hops (终裁 → Burner → 1Shot → VoteBoard) light one-by-one this far apart, so the
+// relayed vote visibly travels hop-by-hop instead of the whole leg flashing on at once.
+const RELAY_STAGGER_MS = 520;
 
 const LENS_ICON: Record<LensKey, LucideIcon> = {
   fiscal: Coins,
@@ -868,6 +871,13 @@ export function AuthorityChain({
   const lensTarget = beamLive('analyzing') ? LENSES.length - 1 : -1;
   const lensLit = useRatchet(lensTarget, LENS_STAGGER_MS, killed || !!instant);
 
+  // Mainnet cast leg: once the vote is cast, the relayed hops light one-by-one (终裁 → Burner → 1Shot →
+  // VoteBoard) instead of all at once. relayLit 0=Burner, 1=1Shot, 2=VoteBoard reached.
+  const relayTarget = oneShot && beamLive('voted') ? 2 : -1;
+  const relayLit = useRatchet(relayTarget, RELAY_STAGGER_MS, killed || !!instant);
+  // On the testnet leg (no relay nodes), the single cast beam still lights at 'voted' as before.
+  const castBeamLive = (hop: number) => (oneShot ? relayLit >= hop : beamLive('voted'));
+
   const orchWorking = nodeLit('redelegated') && !beamLive('analyzing'); // lit, holding the scope
   // the Arbiter glows brand-orange while the committee's inputs converge on it (the fan-in is live but
   // the verdict hasn't crystallized yet), then its circle switches to the decision color.
@@ -952,8 +962,8 @@ export function AuthorityChain({
             addr={parties.burner}
             basescan={bs}
             badge="7702 ✓ · 0 ETH"
-            active={beamLive('voted')}
-            working={beamLive('voted') && !nodeLit('voted')}
+            active={relayLit >= 0}
+            working={relayLit === 0}
             tone="info"
             floatBelow
             killed={killed}
@@ -963,8 +973,8 @@ export function AuthorityChain({
             icon={Rocket}
             who="1Shot"
             role={t.oneShotNodeRole}
-            active={beamLive('voted')}
-            working={beamLive('voted') && !nodeLit('voted')}
+            active={relayLit >= 1}
+            working={relayLit === 1}
             tone="info"
             floatBelow
             killed={killed}
@@ -993,9 +1003,9 @@ export function AuthorityChain({
       {/* the cast leg: Arbiter → VoteBoard, routed through the Burner + 1Shot relay on the mainnet path */}
       {oneShot ? (
         <>
-          <Beam container={containerRef} from={synthRef} to={burnerRef} live={beamLive('voted')} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
-          <Beam container={containerRef} from={burnerRef} to={oneShotRef} live={beamLive('voted')} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
-          <Beam container={containerRef} from={oneShotRef} to={boardRef} live={beamLive('voted')} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
+          <Beam container={containerRef} from={synthRef} to={burnerRef} live={castBeamLive(0)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
+          <Beam container={containerRef} from={burnerRef} to={oneShotRef} live={castBeamLive(1)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
+          <Beam container={containerRef} from={oneShotRef} to={boardRef} live={castBeamLive(2)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
         </>
       ) : (
         <Beam container={containerRef} from={synthRef} to={boardRef} live={beamLive('voted')} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
@@ -1037,7 +1047,7 @@ export function AuthorityChain({
         <>
           {/* the Venice TEE enclave + Venice AI node (the AI's decision platform) — same as testnet */}
           <VeniceEnclave container={containerRef} synthRef={synthRef} lensRefs={lensRefs} active={lensLit >= 0} killed={killed} />
-          <MainnetRelayFlow container={containerRef} burnerRef={burnerRef} synthRef={synthRef} oneShotRef={oneShotRef} boardRef={boardRef} live={beamLive('voted')} relay={relay} />
+          <MainnetRelayFlow container={containerRef} burnerRef={burnerRef} synthRef={synthRef} oneShotRef={oneShotRef} boardRef={boardRef} live={relayLit >= 0} relay={relay} />
           {relay.tollTx && <ReceiptTick container={containerRef} nodeRef={synthRef} txHash={relay.tollTx} basescan={relay.basescan} title="x402 toll ↗" />}
           {relay.castTx && <ReceiptTick container={containerRef} nodeRef={oneShotRef} txHash={relay.castTx} basescan={relay.basescan} title="1Shot castVote ↗" />}
         </>
