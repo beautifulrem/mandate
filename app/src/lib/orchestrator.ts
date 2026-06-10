@@ -19,6 +19,16 @@ export async function getConfig(): Promise<DemoConfig> {
   return res.json();
 }
 
+/** SSE stream of a run's state changes — the live push channel (polling stays the fallback). */
+export function runEventsUrl(runId: string): string {
+  return `${ORCHESTRATOR_URL}/run/${runId}/events`;
+}
+
+/** The TEE verdict spoken via Venice /audio/speech (mp3), proxied by the orchestrator. */
+export function runVerdictAudioUrl(runId: string): string {
+  return `${ORCHESTRATOR_URL}/run/${runId}/verdict-audio`;
+}
+
 export async function postGrant(grant: unknown): Promise<{ runId: string }> {
   const res = await fetch(`${ORCHESTRATOR_URL}/grant`, {
     method: 'POST',

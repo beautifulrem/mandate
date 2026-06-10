@@ -17,7 +17,7 @@ import { VoteLog } from '../panels/VoteLog';
 import { VoteResultBanner } from '../panels/VoteResultBanner';
 import { TrackTag } from '../ui/Badge';
 import { TeeConsole } from './TeeConsole';
-import type { MissionVM } from '../MissionControl';
+import { verdictAudioSrc, type MissionVM } from '../MissionControl';
 import type { PanelKey } from './IconRail';
 
 /** Routes a rail key to its popover body, reusing the app's real (live) modules. */
@@ -145,7 +145,7 @@ function RunBody({ vm }: { vm: MissionVM }) {
           <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-info/80">
             <Lock className="size-3" /> {t.split.private}
           </div>
-          <TeeConsole venice={vm.venice} status={vm.s} lenses={vm.lenses} txHash={vm.run?.vote?.txHash} basescan={vm.relayInfo?.basescan} killed={vm.killed} t={t} />
+          <TeeConsole venice={vm.venice} status={vm.s} lenses={vm.lenses} txHash={vm.run?.vote?.txHash} basescan={vm.relayInfo?.basescan} audioSrc={verdictAudioSrc(vm)} killed={vm.killed} t={t} />
         </div>
       )}
       {(vm.run?.vote || vm.killed) && (

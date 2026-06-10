@@ -25,6 +25,7 @@ import { ScopeBlock } from './mission/ScopeBlock';
 import { CapabilityDock } from './mission/CapabilityDock';
 import { OneShotFinale } from './OneShotFinale';
 import { PopoverBody } from './mission/popovers';
+import { runVerdictAudioUrl } from '../lib/orchestrator';
 
 /**
  * The view-model the orchestrator (page.tsx) hands to the single-screen cockpit. It carries the
@@ -114,6 +115,16 @@ export interface RelayInfo {
   /** the cumulative x402 budget the burner pre-signed (USDC) — the Erc20TransferAmount cap. */
   tollBudgetUsdc: string;
   feeUsdc: string;
+}
+
+/**
+ * Where the spoken verdict (Venice /audio/speech) comes from: the replay plays its recorded mp3
+ * artifact; a live run streams it from the orchestrator proxy. The speak button hides itself if
+ * the source can't load, so a missing recording never shows a dead control.
+ */
+export function verdictAudioSrc(vm: MissionVM): string | undefined {
+  if (vm.replayMode) return '/replay/verdict-tts.mp3';
+  return vm.runOnActive && vm.run ? runVerdictAudioUrl(vm.run.runId) : undefined;
 }
 
 const RAIL_TOP = 84;
@@ -257,7 +268,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
           />
         </div>
 
-        <TeeConsole venice={vm.runOnActive ? vm.venice : undefined} status={sEff} stageIdx={revealIdx} lenses={vm.runOnActive ? vm.lenses : undefined} txHash={vm.runOnActive ? vm.run?.vote?.txHash : undefined} basescan={vm.relayInfo?.basescan} killed={vm.killed} t={t} />
+        <TeeConsole venice={vm.runOnActive ? vm.venice : undefined} status={sEff} stageIdx={revealIdx} lenses={vm.runOnActive ? vm.lenses : undefined} txHash={vm.runOnActive ? vm.run?.vote?.txHash : undefined} basescan={vm.relayInfo?.basescan} audioSrc={verdictAudioSrc(vm)} killed={vm.killed} t={t} />
 
         <ScopeBlock vm={vm} />
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LENSES, type LensKey, type RunStatus } from '@mandate/shared';
-import { BadgeCheck, Lock, Receipt, Sparkles, X } from 'lucide-react';
+import { BadgeCheck, Loader2, Lock, Receipt, Sparkles, Volume2, X } from 'lucide-react';
 import { BASESCAN, shortHex } from '../../lib/config';
 import { ORDER } from '../../lib/runState';
 import type { Dict } from '../../lib/i18n';
@@ -22,6 +22,7 @@ export function TeeConsole({
   lenses,
   txHash,
   basescan,
+  audioSrc,
   killed,
   t,
 }: {
@@ -33,6 +34,8 @@ export function TeeConsole({
   txHash?: string;
   /** explorer base for the castVote link (defaults to testnet BASESCAN; mainnet replay overrides it). */
   basescan?: string;
+  /** Venice /audio/speech rendering of the verdict (orchestrator proxy or the replay's recorded mp3). */
+  audioSrc?: string;
   killed: boolean;
   t: Dict;
 }) {
@@ -74,6 +77,11 @@ export function TeeConsole({
             <Sparkles className="size-3" /> Venice AI · TEE
           </span>
           <span className="ml-auto font-mono text-[11px] text-ink-mute">{model}</span>
+        </div>
+
+        {/* the Venice endpoints this flow actually exercises (speech appears once a verdict can be spoken) */}
+        <div className="border-b border-info/10 px-3.5 py-1 font-mono text-[9.5px] tracking-wide text-info/45">
+          venice: /models · /chat/completions · /tee/attestation{audioSrc && showVerdict ? ' · /audio/speech' : ''}
         </div>
 
         <div className="px-3.5 py-2.5">
@@ -203,6 +211,7 @@ export function TeeConsole({
                     </Badge>
                   </button>
                 )}
+                {audioSrc && <SpeakVerdict src={audioSrc} t={t} />}
                 {txHash && (
                   <a
                     href={`${basescan ?? BASESCAN}/tx/${txHash}`}
@@ -249,5 +258,55 @@ export function TeeConsole({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * "Hear the verdict" — plays the Venice /audio/speech rendering of the arbiter's rationale
+ * (the second Venice modality in the main flow). Hides itself if the audio can't load, so a
+ * missing orchestrator or an unrecorded replay never shows a dead button.
+ */
+function SpeakVerdict({ src, t }: { src: string; t: Dict }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'playing' | 'unavailable'>('idle');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // a new verdict (new src) gets a fresh element; stop any previous playback
+  useEffect(() => {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setState('idle');
+  }, [src]);
+  useEffect(() => () => audioRef.current?.pause(), []);
+
+  const toggle = async () => {
+    if (state === 'playing') {
+      audioRef.current?.pause();
+      setState('idle');
+      return;
+    }
+    setState('loading');
+    try {
+      const audio = audioRef.current ?? new Audio(src);
+      audioRef.current = audio;
+      audio.onended = () => setState('idle');
+      await audio.play();
+      setState('playing');
+    } catch {
+      setState('unavailable');
+    }
+  };
+
+  if (state === 'unavailable') return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void toggle()}
+      disabled={state === 'loading'}
+      title={t.hearVerdictTitle}
+      className="inline-flex cursor-pointer items-center gap-1.5 rounded-chip border border-info/35 bg-info/10 bg-none px-2 py-0.5 text-[10px] font-semibold text-info shadow-none transition-colors hover:border-info/60"
+    >
+      {state === 'loading' ? <Loader2 className="size-3 animate-spin" /> : <Volume2 className="size-3" />}
+      {state === 'playing' ? t.hearVerdictPlaying : t.hearVerdict}
+    </button>
   );
 }

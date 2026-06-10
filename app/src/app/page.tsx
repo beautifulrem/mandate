@@ -5,7 +5,7 @@ import type { Delegation, RunStatus } from '@mandate/shared';
 import { PROPOSALS, VOTE_BOARD_ADDRESS, isVoteBoardLive, withVotingPolicy } from '@mandate/shared';
 import { presetFor } from '../lib/presets';
 import { getDict, isLang, LANG_KEY, resolveLang, type Lang } from '../lib/i18n';
-import { getConfig, getRun, postGrant, provision, voteAgain, type DemoConfig } from '../lib/orchestrator';
+import { getConfig, getRun, postGrant, provision, runEventsUrl, voteAgain, type DemoConfig } from '../lib/orchestrator';
 import { recall } from '../lib/recall';
 import { fireSever } from '../lib/sever';
 import { sfxGrant, sfxSever } from '../lib/sfx';
@@ -124,45 +124,82 @@ export default function Home() {
     setRecalling(false);
   }, [address]);
 
+  // Live run feed: SSE push from the orchestrator (sub-second state changes), falling back to 2s
+  // REST polling if the stream can't open or drops (proxy, old orchestrator). A fresh runId /
+  // disconnect must drop a late event, not re-light the cockpit.
   useEffect(() => {
     if (!runId) return;
-    let cancelled = false; // a fresh runId / disconnect must drop a late poll, not re-light the cockpit
+    let cancelled = false;
+    let es: EventSource | null = null;
+
+    const stop = () => {
+      if (timer.current) {
+        clearInterval(timer.current);
+        timer.current = null;
+      }
+      es?.close();
+      es = null;
+    };
+
+    const apply = (r: RunStatus) => {
+      if (cancelled) return;
+      setRun(r);
+      if (r.status === 'voted' && r.vote) {
+        const txHash = r.vote.txHash;
+        setVoteLog((log) =>
+          log.some((e) => e.runId === r.runId)
+            ? log
+            : [
+                {
+                  runId: r.runId,
+                  proposalId: r.proposalId,
+                  decision: r.venice?.decision,
+                  rationale: r.venice?.rationale,
+                  txHash,
+                  attested: !!r.venice?.attestation.verified,
+                },
+                ...log,
+              ],
+        );
+      }
+      if (['voted', 'failed', 'revoked'].includes(r.status)) stop();
+    };
+
     const tick = async () => {
       try {
-        const r = await getRun(runId);
-        if (cancelled) return;
-        setRun(r);
-        if (r.status === 'voted' && r.vote) {
-          const txHash = r.vote.txHash;
-          setVoteLog((log) =>
-            log.some((e) => e.runId === r.runId)
-              ? log
-              : [
-                  {
-                    runId: r.runId,
-                    proposalId: r.proposalId,
-                    decision: r.venice?.decision,
-                    rationale: r.venice?.rationale,
-                    txHash,
-                    attested: !!r.venice?.attestation.verified,
-                  },
-                  ...log,
-                ],
-          );
-        }
-        if (['voted', 'failed', 'revoked'].includes(r.status) && timer.current) {
-          clearInterval(timer.current);
-          timer.current = null;
-        }
+        apply(await getRun(runId));
       } catch {
         /* keep polling */
       }
     };
-    void tick();
-    timer.current = setInterval(tick, 2000);
+    const startPolling = () => {
+      if (cancelled || timer.current) return;
+      void tick();
+      timer.current = setInterval(tick, 2000);
+    };
+
+    try {
+      es = new EventSource(runEventsUrl(runId));
+      es.onmessage = (e) => {
+        try {
+          apply(JSON.parse(e.data as string) as RunStatus);
+        } catch {
+          /* skip a malformed frame */
+        }
+      };
+      es.onerror = () => {
+        // stream unavailable — degrade to polling for the rest of this run
+        es?.close();
+        es = null;
+        startPolling();
+      };
+    } catch {
+      startPolling();
+    }
+
     return () => {
       cancelled = true;
-      if (timer.current) clearInterval(timer.current);
+      stop();
     };
   }, [runId]);
 
