@@ -121,10 +121,16 @@ export function buildSend7710Params(args: {
   permissionContext: unknown[]; // the signed delegation chain (JSON-safe)
   executions: Execution[];
   authorizationList?: unknown[]; // EIP-7702 authorization, first use only
+  /** Webhook receiver (≤256 chars) — the relayer POSTs signed Ed25519 status events on every change. */
+  destinationUrl?: string;
+  /** Opaque correlation label (≤256 chars), echoed back in getStatus + webhook payloads. */
+  memo?: string;
 }): Record<string, unknown> {
   return {
     chainId: String(args.chainId),
     ...(args.authorizationList ? { authorizationList: args.authorizationList } : {}),
+    ...(args.destinationUrl ? { destinationUrl: args.destinationUrl } : {}),
+    ...(args.memo ? { memo: args.memo } : {}),
     transactions: [{ permissionContext: args.permissionContext, executions: args.executions }],
   };
 }
@@ -175,6 +181,67 @@ export interface Ed25519Jwk {
  * signature is valid for the given JWKS public key — reject any event that fails before acting.
  * Uses Web Crypto (works in Node 18+ and the browser).
  */
+/** The relayer JWKS endpoint (Ed25519 keys; rotates infrequently — cache it). */
+export const ONESHOT_JWKS_URL = 'https://relayer.1shotapi.com/.well-known/jwks.json';
+
+/** A relayer webhook event: numeric `type` (4=submitted · 0=confirmed · 1=reverted) + getStatus-shaped `data`. */
+export interface RelayerWebhookEvent {
+  type: number;
+  keyId?: string;
+  signature?: string;
+  data?: RelayTaskStatus & { taskId?: Hex; memo?: string };
+  [key: string]: unknown;
+}
+
+export const WEBHOOK_TYPE_LABEL: Record<number, string> = {
+  4: 'submitted',
+  0: 'confirmed',
+  1: 'reverted',
+};
+
+/**
+ * Pure: stable sorted-key JSON — the relayer signs THIS canonical form of the webhook body
+ * (signature field removed). Arrays keep order; object keys sort lexicographically at every depth.
+ */
+export function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** Decode standard or url-safe base64 to bytes (browser-safe: atob first, Buffer fallback). */
+export function b64ToBytes(b64: string): Uint8Array {
+  const std = b64.replace(/-/g, '+').replace(/_/g, '/');
+  if (typeof globalThis.atob === 'function') {
+    const bin = globalThis.atob(std);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  return new Uint8Array(Buffer.from(std, 'base64'));
+}
+
+/**
+ * Verify a parsed relayer webhook event against the JWKS: strip `signature`, re-serialize with
+ * stable sorted keys, look the key up by the event's `keyId` (else the sole key), verify Ed25519.
+ */
+export async function verifyRelayerWebhook(
+  event: RelayerWebhookEvent,
+  jwks: { keys: Ed25519Jwk[] },
+): Promise<boolean> {
+  const { signature, ...unsigned } = event;
+  if (typeof signature !== 'string' || signature.length === 0) return false;
+  const key = event.keyId ? jwks.keys.find((k) => k.kid === event.keyId) : jwks.keys[0];
+  if (!key) return false;
+  return verifyWebhookSignature(canonicalJson(unsigned), b64ToBytes(signature), key);
+}
+
 export async function verifyWebhookSignature(
   payload: string | Uint8Array,
   signature: Uint8Array,

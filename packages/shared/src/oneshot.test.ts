@@ -1,15 +1,19 @@
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  b64ToBytes,
   buildSend7710Params,
+  canonicalJson,
   floorFee,
   is7702Upgraded,
   isTerminalStatus,
   pickPaymentToken,
   relayStatusLabel,
+  verifyRelayerWebhook,
   verifyWebhookSignature,
   type CapabilitiesResult,
   type Ed25519Jwk,
+  type RelayerWebhookEvent,
 } from './oneshot.js';
 
 describe('relay status', () => {
@@ -71,6 +75,59 @@ describe('buildSend7710Params', () => {
   it('includes the EIP-7702 authorizationList on first use', () => {
     const p = buildSend7710Params({ chainId: 8453, permissionContext: [], executions: [exec], authorizationList: [{ a: 1 }] });
     expect(p.authorizationList).toEqual([{ a: 1 }]);
+  });
+  it('carries destinationUrl + memo for webhook status delivery, omitted when unset', () => {
+    const p = buildSend7710Params({
+      chainId: 8453,
+      permissionContext: [],
+      executions: [exec],
+      destinationUrl: 'https://example.com/webhooks/1shot',
+      memo: 'run_42',
+    });
+    expect(p.destinationUrl).toBe('https://example.com/webhooks/1shot');
+    expect(p.memo).toBe('run_42');
+    const bare = buildSend7710Params({ chainId: 8453, permissionContext: [], executions: [exec] });
+    expect('destinationUrl' in bare).toBe(false);
+    expect('memo' in bare).toBe(false);
+  });
+});
+
+describe('canonicalJson', () => {
+  it('sorts object keys at every depth and keeps array order', () => {
+    expect(canonicalJson({ b: 1, a: { d: [2, 1], c: 'x' } })).toBe('{"a":{"c":"x","d":[2,1]},"b":1}');
+  });
+  it('drops undefined entries and serializes primitives like JSON', () => {
+    expect(canonicalJson({ b: undefined, a: null })).toBe('{"a":null}');
+    expect(canonicalJson('s')).toBe('"s"');
+    expect(canonicalJson(7)).toBe('7');
+  });
+});
+
+describe('b64ToBytes', () => {
+  it('decodes standard and url-safe base64 identically', () => {
+    const std = Buffer.from([251, 239, 190]).toString('base64'); // '++++' style chars
+    const url = std.replace(/\+/g, '-').replace(/\//g, '_');
+    expect([...b64ToBytes(std)]).toEqual([251, 239, 190]);
+    expect([...b64ToBytes(url)]).toEqual([251, 239, 190]);
+  });
+});
+
+describe('verifyRelayerWebhook (full event, canonical form)', () => {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const jwk = { ...(publicKey.export({ format: 'jwk' }) as unknown as Ed25519Jwk), kid: 'k1' };
+  const unsigned = { type: 0, keyId: 'k1', data: { status: 200, hash: '0xabc' } };
+  const signature = crypto.sign(null, Buffer.from(canonicalJson(unsigned)), privateKey).toString('base64');
+  const event = { ...unsigned, signature } as RelayerWebhookEvent;
+
+  it('accepts a correctly signed event, keyed by keyId', async () => {
+    expect(await verifyRelayerWebhook(event, { keys: [jwk] })).toBe(true);
+  });
+  it('rejects a tampered event', async () => {
+    expect(await verifyRelayerWebhook({ ...event, type: 1 }, { keys: [jwk] })).toBe(false);
+  });
+  it('rejects when the keyId is unknown or the signature is missing', async () => {
+    expect(await verifyRelayerWebhook({ ...event, keyId: 'nope' }, { keys: [jwk] })).toBe(false);
+    expect(await verifyRelayerWebhook({ ...unsigned } as RelayerWebhookEvent, { keys: [jwk] })).toBe(false);
   });
 });
 

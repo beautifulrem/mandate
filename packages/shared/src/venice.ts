@@ -148,6 +148,33 @@ export async function fetchAttestation(cfg: VeniceConfig, model: string): Promis
   return mapAttestation((await res.json()) as Record<string, unknown>);
 }
 
+export interface SpeechOptions {
+  text: string;
+  /** TTS model (default `tts-kokoro`, Venice's OpenAI-compatible default). */
+  model?: string;
+  /** Kokoro voice id (default `af_sky`). */
+  voice?: string;
+  format?: 'mp3' | 'wav';
+}
+
+/**
+ * Venice text-to-speech (`POST /audio/speech`) — a second Venice modality beyond the TEE text
+ * pipeline: the arbiter's verdict rationale is spoken aloud. Returns the raw audio bytes.
+ */
+export async function synthesizeSpeech(cfg: VeniceConfig, opts: SpeechOptions): Promise<Uint8Array> {
+  const res = await veniceFetch(cfg, '/audio/speech', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: opts.model ?? 'tts-kokoro',
+      input: opts.text,
+      voice: opts.voice ?? 'af_sky',
+      response_format: opts.format ?? 'mp3',
+    }),
+  });
+  return new Uint8Array(await res.arrayBuffer());
+}
+
 /**
  * Pure: project an analysis result (+ optional attestation) onto the app-facing VeniceTrace
  * contract. decision/support stay consistent (parseDecision guarantees it).

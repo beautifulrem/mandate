@@ -28,6 +28,7 @@ export {
 export type {
   AnalysisResult,
   LensInput,
+  SpeechOptions,
   TeeAttestation,
   TeeProof,
   VeniceConfig,
@@ -45,6 +46,7 @@ export {
   resolveModel,
   resolveTeeModel,
   SYNTHESIS_SYSTEM_PROMPT,
+  synthesizeSpeech,
   synthesizeVerdict,
   toVeniceTrace,
   withVotingPolicy,
@@ -57,10 +59,13 @@ export type {
   Ed25519Jwk,
   Execution,
   RelayerToken,
+  RelayerWebhookEvent,
   RelayTaskStatus,
 } from './oneshot.js';
 export {
+  b64ToBytes,
   buildSend7710Params,
+  canonicalJson,
   estimate7710Transaction,
   floorFee,
   getCapabilities,
@@ -68,14 +73,17 @@ export {
   getStatus,
   is7702Upgraded,
   isTerminalStatus,
+  ONESHOT_JWKS_URL,
   ONESHOT_RELAYER_URL,
   pickPaymentToken,
   RelayStatus,
   relayerCall,
   relayStatusLabel,
+  verifyRelayerWebhook,
   send7710Transaction,
   statusTxHash,
   verifyWebhookSignature,
+  WEBHOOK_TYPE_LABEL,
 } from './oneshot.js';
 export type { PaymentRequired, PaymentRequirements } from './x402.js';
 export {
