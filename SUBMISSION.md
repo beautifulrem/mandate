@@ -37,13 +37,17 @@ click** the instant you stop trusting it.
    and cascade-revocable.
 3. **Decide** — the Analyst analyses each proposal privately inside a **Venice TEE** (Intel TDX,
    `e2ee-*` model, attestation `verified: true`). The cast `support` provably comes from the
-   model — the on-chain tally bucket matches the TEE decision.
+   model — the on-chain tally bucket matches the TEE decision. **Four Venice endpoints run in the
+   main flow** (`/models` · `/chat/completions` · `/tee/attestation` · `/audio/speech`): the
+   arbiter even *speaks* its verdict via Venice TTS.
 4. **Pay** — the agent pays a per-query x402 toll for proposal data by signing a scoped
    `Erc20TransferAmount` delegation; the seller redeems it on-chain to settle.
 5. **Vote** — the Analyst redeems the chain leaf→root; the DelegationManager executes
    `castVote` **as your smart account**. On Base **mainnet**, the cast is relayed by the 1Shot
    permissionless relayer: a burner EOA is 7702-upgraded *through 1Shot*, holds 0 ETH, and pays
-   the 0.01 USDC fee in USDC.
+   the 0.01 USDC fee in USDC. Transaction status arrives as **signed Ed25519 webhooks**
+   (`destinationUrl` → `POST /webhooks/1shot`, verified against the relayer JWKS) — the
+   webhook-over-polling pattern the 1Shot track calls out.
 6. **Recall (the wow)** — one `disableDelegation(root)` cascade-revokes everything downstream.
    The next redemption reverts on-chain. Self-custody you can watch.
 
@@ -71,7 +75,7 @@ DelegationManager — the honest castVote passes, the tampered fund-transfer rev
 |---|---|
 | General qualification (SAK + ERC-7710 in the main flow) | grant flow `app/src/lib/wallet.ts`; redeem tx [`0xc9f4…4841`](https://sepolia.basescan.org/tx/0xc9f49a3ba3020deb40cdb2fc27c9247caabf8333adea15ce6edf6d4ff2ef4841) |
 | Best A2A coordination | 3 participants, 2 signed delegations, leaf→root redemption — `EVIDENCE.md` |
-| Best use of Venice AI | TEE decisions discriminate (risky → Against, sound → For); `x-venice-tee: true`; attestation `verified: true` |
+| Best use of Venice AI | 4 endpoints in the main flow (models/chat/attestation/**speech** — the arbiter speaks); TEE decisions discriminate; attestation `verified: true` |
 | Best x402 + ERC-7710 | `pnpm x402:demo` → `402 → scoped Erc20TransferAmount delegation → on-chain settle → data` |
 | Best 1Shot Permissionless Relayer | **Base mainnet** castVote tx [`0x3b54…6a07`](https://basescan.org/tx/0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07); burner 7702-upgraded through 1Shot; fee 0.01 USDC, 0 ETH |
 | Best Smart Accounts Agent | `pnpm orchestrate`: one grant → TEE decision → real castVote; tally bucket == decision |
@@ -128,10 +132,12 @@ VALUE`), 7702-upgraded a burner *through 1Shot* on first use (authorizationList)
 real `castVote` with gas paid in USDC (fee 0.01 USDC; the burner holds 0 ETH).
 
 **The app.** Next.js 15 mission-control UI: connect → grant (browser signing) → live authority
-graph → Venice TEE panel → x402 toll card → 1Shot mainnet replay → **Recall** → Tamper Probe
-(live success + revert pair, enforcer named on screen).
+graph (SSE-streamed run state, polling fallback) → Venice TEE panel (spoken verdict via Venice
+TTS) → x402 toll card → 1Shot mainnet replay → **Recall** → Tamper Probe (live success + revert
+pair, enforcer named on screen). An **MCP server** (`agent/mandate-mcp`) lets any agent REQUEST a
+mandate — the request returns UNSIGNED; only the human's MetaMask smart account can grant.
 
-**Engineering quality.** 184 tests, all green (101 shared · 50 app · 20 Foundry · 13 agents);
+**Engineering quality.** 198 tests, all green (108 shared · 55 app · 20 Foundry · 15 agents);
 TypeScript strict; eslint; browser-safe shared package (Web Crypto, no runtime `node:*`);
 throwaway keys + gitignored secrets; every mainnet action opt-in and quoted live before signing.
 

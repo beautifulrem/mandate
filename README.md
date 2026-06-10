@@ -85,10 +85,10 @@ hop-count).
 |---|---|---|
 | General qualification — SAK smart account + ERC-7710 **standing grant** in the main flow | ✅ live | grant signing in [`app/src/lib/wallet.ts`](./app/src/lib/wallet.ts); redeem tx [`0xc9f4…4841`](https://sepolia.basescan.org/tx/0xc9f49a3ba3020deb40cdb2fc27c9247caabf8333adea15ce6edf6d4ff2ef4841) |
 | **Revocable governance mandate + kill-the-chain (the core)** — Recall disables the root; the next redemption reverts on-chain | ✅ live | disable UserOp [`0x1475…c74b`](https://sepolia.basescan.org/tx/0x147517e3b3120bb2bc60ee98a0de2017b4d4412ad9cbf58d06954a8e4d4dc74b) → `canRedeem` flips `true → false`; reproduce `pnpm revoke:2hop` |
-| **Best use of Venice AI** — the TEE model decides `support` per proposal; attestation verified | ✅ live | decisions discriminate (risky → Against, sound → For); `x-venice-tee: true`; attestation `verified: true` — [EVIDENCE](./EVIDENCE.md#best-venice-ai-live) |
+| **Best use of Venice AI** — the TEE model decides `support` per proposal; attestation verified; **4 Venice endpoints** in the main flow (`/models` · `/chat/completions` · `/tee/attestation` · `/audio/speech` — the arbiter *speaks* its verdict) | ✅ live | decisions discriminate (risky → Against, sound → For); `x-venice-tee: true`; attestation `verified: true`; spoken verdict via `tts-kokoro` — [EVIDENCE](./EVIDENCE.md#best-venice-ai-live) |
 | **Best Agent** — one grant → autonomous analyze → decide → vote, proposal after proposal | ✅ live | `pnpm orchestrate`; the on-chain tally bucket == the Venice decision, redeem tx [`0xd830…1356`](https://sepolia.basescan.org/tx/0xd8303a62b68b21e8f9578e054061de64fcab5880084973feb30026326b6c1356) |
 | Best A2A coordination — 2-hop attenuated re-delegation (the mechanism behind the mandate) | ✅ live | 3 participants, 2 signed delegations, leaf→root redemption — [EVIDENCE](./EVIDENCE.md#checkpoint-a--best-a2a-live-base-sepolia) |
-| **Best 1Shot Permissionless Relayer** — mainnet `castVote` via 7702 + 7710 (USDC gas) | ✅ live on Base **mainnet** | castVote tx [`0x3b54…6a07`](https://basescan.org/tx/0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07); burner code `0xef0100…` (7702-upgraded through 1Shot); fee 0.01 USDC, burner holds 0 ETH |
+| **Best 1Shot Permissionless Relayer** — mainnet `castVote` via 7702 + 7710 (USDC gas); **webhook status feed** (signed Ed25519 events → `POST /webhooks/1shot`, verified against the relayer JWKS) | ✅ live on Base **mainnet** | castVote tx [`0x3b54…6a07`](https://basescan.org/tx/0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07); burner code `0xef0100…` (7702-upgraded through 1Shot); fee 0.01 USDC, burner holds 0 ETH; webhook receiver [`server.ts`](./agent/orchestrator/src/server.ts) + verifier [`oneshot.ts`](./packages/shared/src/oneshot.ts) |
 | **Best x402 + ERC-7710** — self-built seller; the agent pays per-query via a scoped delegation | ✅ live | `pnpm x402:demo` → `402 → scoped Erc20TransferAmount delegation → on-chain settle → data` |
 
 Full receipts per track: [`EVIDENCE.md`](./EVIDENCE.md).
@@ -97,7 +97,7 @@ Full receipts per track: [`EVIDENCE.md`](./EVIDENCE.md).
 
 ```bash
 pnpm install
-pnpm -r build && pnpm -r test          # 184 tests, all green: 101 shared · 50 app · 20 Foundry · 13 agents
+pnpm -r build && pnpm -r test          # 198 tests, all green: 108 shared · 55 app · 20 Foundry · 15 agents
 
 # one-time: generate throwaway demo keys into .env + print a funding checklist
 pnpm bootstrap:accounts                 # then fund the printed addresses from a Base Sepolia faucet
@@ -124,7 +124,10 @@ See **[`ARCHITECTURE.md`](./ARCHITECTURE.md)**. In short — a pnpm monorepo:
 packages/shared/      delegation (ERC-7710) · Governor/proposal helpers · Venice client · 1Shot client · run contract (zod)
 packages/contracts/   Foundry: VotesToken (ERC20Votes, timestamp clock) + MandateGovernor + deploy/propose scripts
 agent/orchestrator/   HTTP service: holds the root, attenuated-redelegates, drives the run state machine
+                      (SSE run stream · 1Shot webhook receiver · Venice TTS proxy)
 agent/analyst/        decides support in the Venice TEE and casts by redeeming the chain
+agent/mandate-mcp/    MCP server: any agent can DESCRIBE/REQUEST a mandate — but the request comes
+                      back UNSIGNED; only the human's MetaMask smart account can grant. No self-granting.
 app/                  Next.js 15 — connect, grant (browser signing), live authority graph, Recall
 ```
 
@@ -132,7 +135,8 @@ app/                  Next.js 15 — connect, grant (browser signing), live auth
 
 `@metamask/smart-accounts-kit@1.6.0` (ERC-7710 delegation/redelegation, EIP-7702, Hybrid smart accounts) ·
 `viem` · OpenZeppelin Contracts `5.6.1` + Foundry · Venice AI (TEE `e2ee-*` models, `/tee/attestation`) ·
-1Shot permissionless relayer (mainnet JSON-RPC) · Pimlico public bundler (UserOps) · Next.js 15 / React 19 ·
+1Shot permissionless relayer (mainnet JSON-RPC · signed Ed25519 status webhooks) · Pimlico public bundler
+(UserOps) · Next.js 15 / React 19 · SSE run streaming (EventSource, polling fallback) · MCP server ·
 Base (Sepolia 84532 · mainnet 8453).
 
 ## Smart Accounts Kit surface — what Mandate actually calls
