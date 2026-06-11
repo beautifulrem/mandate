@@ -207,6 +207,7 @@ function Beam({
   root,
   tone,
   packet = true,
+  flowing = true,
 }: {
   from: DivRef;
   to: DivRef;
@@ -219,6 +220,10 @@ function Beam({
   /** render the travelling light when the beam goes live. The mainnet cast-leg beams turn this OFF —
    *  there the MainnetRelayFlow coins ARE the travelling light, and doubling them reads as clutter. */
   packet?: boolean;
+  /** animate the dash flow. False at rest: a lit-but-static beam costs zero repaints, while the
+   *  infinite dashoffset animation repaints the full-width SVG every frame — the page's main idle
+   *  cost (11 beams once a run completes). The flow plays only while the run is actually moving. */
+  flowing?: boolean;
 }) {
   const [geom, setGeom] = useState<Geom | null>(null);
   const gid = useId().replace(/:/g, ''); // unique per beam — gradient ids must not collide across beams
@@ -279,7 +284,7 @@ function Beam({
         ) : (
           <>
             <path className="beam-base" d={geom.d} />
-            {live && <path className="beam-pulse" d={geom.d} stroke={`url(#beamgrad-${gid})`} />}
+            {live && <path className={flowing ? 'beam-pulse' : 'beam-pulse calm'} d={geom.d} stroke={`url(#beamgrad-${gid})`} />}
           </>
         )}
       </svg>
@@ -1016,9 +1021,9 @@ export function AuthorityChain({
       {/* You → Orchestrator (root, testnet), then fan-out to the lenses, fan-in to Arbiter (终裁),
           then to the board. On mainnet the fan-out comes straight from 你 — the burner account
           itself initiates the committee; there is no orchestrator hop in the recorded run. */}
-      {!oneShot && <Beam container={containerRef} from={youRef} to={orchRef} live={beamLive('redelegated')} killed={killed} cutting={cutting} root />}
+      {!oneShot && <Beam container={containerRef} from={youRef} to={orchRef} live={beamLive('redelegated')} killed={killed} cutting={cutting} root  flowing={!instant} />}
       {LENSES.map((lens, i) => (
-        <Beam key={`out-${lens.key}`} container={containerRef} from={oneShot ? youRef : orchRef} to={lensRefs[i]} live={beamLive('analyzing')} killed={killed} cutting={cutting} />
+        <Beam key={`out-${lens.key}`} container={containerRef} from={oneShot ? youRef : orchRef} to={lensRefs[i]} live={beamLive('analyzing')} killed={killed} cutting={cutting}  flowing={!instant} />
       ))}
       {LENSES.map((lens, i) => (
         <Beam
@@ -1037,12 +1042,12 @@ export function AuthorityChain({
         <>
           {/* packet OFF: the MainnetRelayFlow coins (bundle/fee/gas) are the cast leg's travelling
               lights — one per segment, launching only when ITS hop lights, landing before the next. */}
-          <Beam container={containerRef} from={synthRef} to={burnerRef} live={castBeamLive(0)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false} />
-          <Beam container={containerRef} from={burnerRef} to={oneShotRef} live={castBeamLive(1)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false} />
-          <Beam container={containerRef} from={oneShotRef} to={boardRef} live={castBeamLive(2)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false} />
+          <Beam container={containerRef} from={synthRef} to={burnerRef} live={castBeamLive(0)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false}  flowing={!instant} />
+          <Beam container={containerRef} from={burnerRef} to={oneShotRef} live={castBeamLive(1)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false}  flowing={!instant} />
+          <Beam container={containerRef} from={oneShotRef} to={boardRef} live={castBeamLive(2)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false}  flowing={!instant} />
         </>
       ) : (
-        <Beam container={containerRef} from={synthRef} to={boardRef} live={beamLive('voted')} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
+        <Beam container={containerRef} from={synthRef} to={boardRef} live={beamLive('voted')} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)}  flowing={!instant} />
       )}
 
       {live && !killed && !cutting && (

@@ -99,7 +99,10 @@ export function useLiveTally(
       }
     };
     void poll();
-    const id = setInterval(poll, 3000);
+    const id = setInterval(() => {
+      if (document.hidden) return; // background tab: skip RPC polls (resumes on the next tick visible)
+      poll();
+    }, 3000);
     return () => {
       cancelled = true;
       clearInterval(id);
