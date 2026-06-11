@@ -150,44 +150,17 @@ and follow-on collaboration with the MetaMask / Base / Venice / 1Shot ecosystems
 
 ---
 
-# Appendix A — Feedback-track GitHub issues (DRAFTS — not filed yet)
+# Appendix A — Feedback-track GitHub issues (✅ FILED 2026-06-11)
 
-Real friction we hit during the build; each is reproducible. File from the team account after
-review.
+Real friction from the build, filed as actionable issues from the team account (@beautifulrem)
+— paste these links into the form's feedback field:
 
-### A1. Venice — `api-docs`: TEE model naming & discovery
-
-- **Title:** Docs say "TEE models" but the model ids are `e2ee-*` — naming + discovery guidance
-- **Body sketch:** Marketing/docs refer to TEE inference, but `/models` exposes them as
-  `e2ee-…` (e.g. `e2ee-qwen3-5-122b-a10b`); nothing matches `tee-*`. Suggest: document the
-  `e2ee-` prefix, and document filtering `/models` by capability so clients can auto-resolve a
-  TEE-capable model instead of hardcoding ids. We auto-resolve by capability as a workaround.
-
-### A2. Venice — onboarding: fresh API keys default to a $0 spend limit
-
-- **Title:** New API keys silently fail until a per-key USD spend limit is raised above 0
-- **Body sketch:** A funded account + fresh key still gets every completion rejected because
-  the per-key spend limit defaults to 0; the error doesn't say *which* limit. Suggest: default
-  the per-key limit to the account balance or return an explicit
-  `spend_limit_exceeded(limit=0)` style error pointing at the key settings page.
-
-### A3. 1Shot — docs/examples: relayer chain support is discoverable only by probing
-
-- **Title:** `relayer_getCapabilities` returns `{}` on Base Sepolia — document mainnet-only
-  support explicitly
-- **Body sketch:** The permissionless relayer quietly returns an empty capabilities object on
-  testnets; nothing in the docs states the supported-chain matrix. Suggest: publish the chain
-  matrix and make `relayer_getCapabilities` return an explicit
-  `{ supported: false, reason: … }`. Cost us a redesign-day; we moved the relay leg to mainnet.
-
-### A4. MetaMask SAK — docs: when you need 7710 `createDelegation` vs ERC-7715
-
-- **Title:** Clarify in docs that ERC-7715 permission requests cover 4 token scopes only —
-  function-call mandates need `createDelegation(ScopeType.FunctionCall)`
-- **Body sketch:** We initially designed the governance grant around `wallet_requestExecutionPermissions`
-  and discovered late that 7715 supports only the token-stream/periodic scopes; arbitrary
-  function-call authority (e.g. Governor.castVote) must go through 7710 `createDelegation`.
-  One docs paragraph ("choosing 7715 vs 7710") would save builders a pivot.
+| # | Issue | Link |
+|---|---|---|
+| A1 | Venice api-docs — "TEE models" are actually `e2ee-*`; document the prefix + capability-based discovery | https://github.com/veniceai/api-docs/issues/283 |
+| A2 | Venice api-docs — fresh API keys silently fail until the per-key USD spend limit is raised; name the cause in the error | https://github.com/veniceai/api-docs/issues/284 |
+| A3 | 1Shot docs — `relayer_getCapabilities` returns `{}` on unsupported chains; return an explicit unsupported signal (complements 1Shot-API-Examples#1) | https://github.com/1Shot-API/1shot-documentation/issues/2 |
+| A4 | MetaMask SAK — docs gap: when ERC-7715 suffices vs when you need 7710 `createDelegation` (function-call scopes) | https://github.com/MetaMask/smart-accounts-kit/issues/263 |
 
 # Appendix B — X (Twitter) thread (DRAFT — not posted yet)
 
@@ -222,7 +195,7 @@ move funds and watch the chain refuse. Self-custody you can watch. Repo + receip
 - [ ] Record the <3-min demo video (every track capability ON SCREEN, per judge requirement)
 - [ ] (optional) Record the separate pitch/路演 video — HackQuest has a second video slot
 - [ ] Deploy the app and fill the "Live app" link above
-- [ ] File the Appendix-A issues from the team account, then list them in the form (Feedback track)
+- [x] File the Appendix-A issues from the team account, then list them in the form (Feedback track) — filed 2026-06-11, links above
 - [ ] Post the Appendix-B thread, link it in the form (Social-media track)
 - [ ] Fill HackQuest fields from this file (one-liner / 描述 / 进展 / 融资状态)
 - [ ] Final pass: every tx link resolves, every command in README reproduces
