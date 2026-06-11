@@ -26,6 +26,7 @@ import { CapabilityDock } from './mission/CapabilityDock';
 import { OneShotFinale } from './OneShotFinale';
 import { PopoverBody } from './mission/popovers';
 import { runVerdictAudioUrl } from '../lib/orchestrator';
+import { humanizeError } from '../lib/errors';
 
 /**
  * The view-model the orchestrator (page.tsx) hands to the single-screen cockpit. It carries the
@@ -88,6 +89,8 @@ export interface MissionVM {
   recalling: boolean;
   recallTx: string | null;
   error: string | null;
+  /** clear the toast (the ✕ button / its 10s auto-dismiss). */
+  clearError?: () => void;
   // refs (fireSever origin = the graph stage)
   graphStageRef: RefObject<HTMLDivElement | null>;
   // actions
@@ -286,7 +289,7 @@ export function MissionControl({ vm }: { vm: MissionVM }) {
         {panel && <PopoverBody panel={panel} vm={vm} tally={tally} voters={voters} live={live} />}
       </Popover>
 
-      <ErrorToast error={vm.error} />
+      <ErrorToast error={vm.error ? humanizeError(vm.error, t) : null} onClose={vm.clearError} dismissLabel={t.errDismiss} />
     </div>
   );
 }

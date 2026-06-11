@@ -149,6 +149,7 @@ export function useMainnetReplay(statics: {
     recalling: false,
     recallTx: null,
     error: null,
+    clearError: noop,
     graphStageRef: statics.graphStageRef,
     onGrant: noop,
     onVoteActive: noop,

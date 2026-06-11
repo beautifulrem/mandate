@@ -2,19 +2,18 @@
 
 import './serverLocalStorage';
 import { connectorsForWallets } from '@rainbow-me/rainbowkit';
-import { injectedWallet, metaMaskWallet } from '@rainbow-me/rainbowkit/wallets';
+import { metaMaskWallet } from '@rainbow-me/rainbowkit/wallets';
 import { createConfig, http } from 'wagmi';
 import { base, baseSepolia } from 'wagmi/chains';
 import { RPC_URL } from './config';
 
-// Injected-only wallet setup (no WalletConnect Cloud projectId needed).
-// `multiInjectedProviderDiscovery` (wagmi default) + RainbowKit surface every
-// EIP-6963 wallet (MetaMask, Phantom, …) by its rdns, so the connect modal lists
-// the real MetaMask explicitly instead of whatever won the legacy window.ethereum
-// race — the root cause of the earlier Phantom hijack. The projectId below is a
-// placeholder; WalletConnect (QR/mobile) is intentionally not wired for this demo.
+// MetaMask-ONLY wallet setup (no WalletConnect Cloud projectId needed).
+// RainbowKit + EIP-6963 rdns discovery pin the connect modal to the REAL MetaMask
+// extension — no generic injected fallback, so Phantom/other injectors can never
+// hijack the flow (the demo's smart account must be the MetaMask one). The projectId
+// is a placeholder; WalletConnect (QR/mobile) is intentionally not wired for this demo.
 const connectors = connectorsForWallets(
-  [{ groupName: 'Installed', wallets: [metaMaskWallet, injectedWallet] }],
+  [{ groupName: 'MetaMask', wallets: [metaMaskWallet] }],
   { appName: 'Mandate', projectId: 'mandate-injected-demo' },
 );
 
@@ -25,6 +24,9 @@ export const wagmiConfig = createConfig({
     [baseSepolia.id]: http(RPC_URL),
     [base.id]: http(),
   },
-  multiInjectedProviderDiscovery: true,
+  // OFF: wagmi's EIP-6963 auto-discovery would add a connector for EVERY announced wallet
+  // (Phantom, …) and RainbowKit lists those under "Installed" regardless of the wallet list
+  // above. metaMaskWallet does its own rdns-targeted detection, so MetaMask still connects.
+  multiInjectedProviderDiscovery: false,
   ssr: true,
 });

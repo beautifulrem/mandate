@@ -383,6 +383,7 @@ export default function Home() {
     recalling,
     recallTx,
     error,
+    clearError: () => setError(null),
     graphStageRef,
     onGrant,
     onVoteActive,
