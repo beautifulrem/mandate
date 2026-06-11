@@ -331,7 +331,8 @@ function ScopeChip({
 }: {
   container: DivRef;
   youRef: DivRef;
-  orchRef: DivRef;
+  /** absent on the mainnet leg — there is no orchestrator hop in the recorded 1Shot run. */
+  orchRef?: DivRef;
   synthRef: DivRef;
   burnerRef?: DivRef;
   oneShotRef?: DivRef;
@@ -345,17 +346,17 @@ function ScopeChip({
   const reduce = useReducedMotion();
   useEffect(() => {
     const compute = () => {
-      if (!container.current || !youRef.current || !orchRef.current || !synthRef.current || !boardRef.current) return;
+      if (!container.current || !youRef.current || !synthRef.current || !boardRef.current) return;
       const cr = container.current.getBoundingClientRect();
       const cx = (n: HTMLDivElement) => {
         const r = n.getBoundingClientRect();
         return r.left - cr.left + r.width / 2;
       };
       // float the token just above the You / Orch / Arbiter / Board circle row (they share one centre).
-      const orchTop = orchRef.current.getBoundingClientRect().top - cr.top;
+      const orchTop = (orchRef?.current ?? youRef.current).getBoundingClientRect().top - cr.top;
       setXs({
         you: cx(youRef.current),
-        orch: cx(orchRef.current),
+        orch: orchRef?.current ? cx(orchRef.current) : cx(youRef.current),
         synth: cx(synthRef.current),
         burner: burnerRef?.current ? cx(burnerRef.current) : undefined,
         oneShot: oneShotRef?.current ? cx(oneShotRef.current) : undefined,
@@ -907,7 +908,7 @@ export function AuthorityChain({
         ? 'board'
         : beamLive('decided')
           ? 'synth'
-          : beamLive('redelegated')
+          : beamLive('redelegated') && !oneShot
             ? 'orch'
             : 'you';
   const SCOPE_STAGES: Record<ChipPos, { label: string; icon: LucideIcon }> = {
@@ -931,7 +932,11 @@ export function AuthorityChain({
   return (
     <div className={`chain${killed ? ' killed' : ''}`} ref={containerRef} style={{ width: '100%', maxWidth: 1120, alignItems: 'center' }}>
       <ChainNode nodeRef={youRef} icon={User} who={t.nodes.you.who} role={t.nodes.you.role} addr={parties.you} basescan={bs} active={connected} floatBelow killed={killed} tip={t.nodeTips.you} />
-      <ChainNode nodeRef={orchRef} icon={Bot} who={t.nodes.orch.who} role={t.nodes.orch.role} addr={parties.orch} basescan={bs} active={nodeLit('redelegated')} working={orchWorking} floatBelow killed={killed} tip={t.nodeTips.orch} />
+      {/* the orchestrator exists on the TESTNET 2-hop chain only; the recorded mainnet run has no
+          redelegation hop — drawing it (with a borrowed address) would be a fabricated node. */}
+      {!oneShot && (
+        <ChainNode nodeRef={orchRef} icon={Bot} who={t.nodes.orch.who} role={t.nodes.orch.role} addr={parties.orch} basescan={bs} active={nodeLit('redelegated')} working={orchWorking} floatBelow killed={killed} tip={t.nodeTips.orch} />
+      )}
 
       {/* the four governance lenses (decision agents), stacked between the orchestrator and arbiter/终裁 */}
       <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', alignSelf: 'center' }}>
@@ -1008,10 +1013,12 @@ export function AuthorityChain({
       )}
       <ChainNode nodeRef={boardRef} icon={Boxes} who={t.nodes.board.who} role={t.nodes.board.role} addr={parties.board} basescan={bs} active={connected} board tone={boardTone} floatBelow pips={pips} tip={t.nodeTips.board} />
 
-      {/* You → Orchestrator (root), then fan-out to the lenses, fan-in to Arbiter (终裁), then to the board */}
-      <Beam container={containerRef} from={youRef} to={orchRef} live={beamLive('redelegated')} killed={killed} cutting={cutting} root />
+      {/* You → Orchestrator (root, testnet), then fan-out to the lenses, fan-in to Arbiter (终裁),
+          then to the board. On mainnet the fan-out comes straight from 你 — the burner account
+          itself initiates the committee; there is no orchestrator hop in the recorded run. */}
+      {!oneShot && <Beam container={containerRef} from={youRef} to={orchRef} live={beamLive('redelegated')} killed={killed} cutting={cutting} root />}
       {LENSES.map((lens, i) => (
-        <Beam key={`out-${lens.key}`} container={containerRef} from={orchRef} to={lensRefs[i]} live={beamLive('analyzing')} killed={killed} cutting={cutting} />
+        <Beam key={`out-${lens.key}`} container={containerRef} from={oneShot ? youRef : orchRef} to={lensRefs[i]} live={beamLive('analyzing')} killed={killed} cutting={cutting} />
       ))}
       {LENSES.map((lens, i) => (
         <Beam
@@ -1042,7 +1049,7 @@ export function AuthorityChain({
         <ScopeChip
           container={containerRef}
           youRef={youRef}
-          orchRef={orchRef}
+          orchRef={oneShot ? undefined : orchRef}
           synthRef={synthRef}
           burnerRef={oneShot ? burnerRef : undefined}
           oneShotRef={oneShot ? oneShotRef : undefined}

@@ -127,7 +127,8 @@ export function useMainnetReplay(statics: {
     grantedAt: Date.parse(snap.recordedAt) || null,
     voteLog: [],
     youAddr: burner,
-    orchAddr: burner,
+    // the recorded mainnet run has NO orchestrator hop — never surface a borrowed address for it
+    orchAddr: undefined,
     analystAddr: snap.toll?.seller ?? burner,
     burnerAddr: burner,
     boardAddr: snap.voteBoard ?? board,

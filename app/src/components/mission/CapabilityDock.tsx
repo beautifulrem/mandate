@@ -17,7 +17,9 @@ export function CapabilityDock({ t, onOpen, connected, revealIdx, killed, x402Se
   const met = [
     { label: '4337', on: connected && !killed, tip: t.trackTips['4337'] },
     { label: '7710', on: revealIdx >= 0 && !killed, tip: t.trackTips['7710'] },
-    { label: 'A2A', on: revealIdx >= 1 && !killed, tip: t.trackTips.A2A },
+    // A2A is the TESTNET 2-hop redelegation — the recorded mainnet run has no orchestrator hop,
+    // so the chip stays dark there (the graph no longer draws that hop either).
+    { label: 'A2A', on: revealIdx >= 1 && !killed && !mainnet, tip: t.trackTips.A2A },
     { label: 'TEE', on: revealIdx >= 2 && !killed, tip: t.trackTips.TEE },
   ];
   return (

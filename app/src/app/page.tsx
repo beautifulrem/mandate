@@ -399,5 +399,8 @@ export default function Home() {
   const shown: MissionVM =
     network === 'mainnet' && replayVm ? { ...replayVm, ...netProps } : { ...vm, ...netProps };
 
-  return <MissionControl vm={shown} />;
+  // key per network: the two views are different graphs (node sets, vms, reveal state) — remounting
+  // on switch swaps them cleanly instead of morphing one into the other (which froze enter
+  // animations and left the other network's controls half-faded on screen).
+  return <MissionControl key={network} vm={shown} />;
 }
