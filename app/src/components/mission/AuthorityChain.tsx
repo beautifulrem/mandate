@@ -184,6 +184,7 @@ function Beam({
   cutting,
   root,
   tone,
+  packet = true,
 }: {
   from: DivRef;
   to: DivRef;
@@ -193,6 +194,9 @@ function Beam({
   cutting?: boolean;
   root?: boolean;
   tone?: ToneKey;
+  /** render the travelling light when the beam goes live. The mainnet cast-leg beams turn this OFF —
+   *  there the MainnetRelayFlow coins ARE the travelling light, and doubling them reads as clutter. */
+  packet?: boolean;
 }) {
   const [geom, setGeom] = useState<Geom | null>(null);
   const gid = useId().replace(/:/g, ''); // unique per beam — gradient ids must not collide across beams
@@ -257,7 +261,7 @@ function Beam({
           </>
         )}
       </svg>
-      {live && !killed && !cutting && (
+      {live && !killed && !cutting && packet && (
         <span
           className="beam-packet"
           style={
@@ -767,6 +771,7 @@ function MainnetRelayFlow({
   oneShotRef,
   boardRef,
   relayLit,
+  paced,
   relay,
   t,
 }: {
@@ -777,6 +782,10 @@ function MainnetRelayFlow({
   boardRef: DivRef;
   /** the cast-leg ratchet: -1 idle, 0 Burner lit, 1 1Shot lit, 2 VoteBoard reached. Drives each segment. */
   relayLit: number;
+  /** true while the ratchet is CLIMBING (a live paced replay). When the cockpit snaps the ratchet to
+   *  its target (clock ended / flipping back to a finished run), the travel particles stay off —
+   *  a snap is "show the finished state", and firing every pending hop at once reads as chaos. */
+  paced: boolean;
   relay: { basescan: string; tollTx?: string; castTx?: string; tollUsdc: string; feeUsdc: string };
   t: Dict;
 }) {
@@ -839,9 +848,9 @@ function MainnetRelayFlow({
             终裁→Burner  = the 7710 decision bundle handed to the burner (gold)
             Burner→1Shot = the USDC relay fee the burner pays the relayer (cyan)
             1Shot→Board  = the ETH gas 1Shot fronts to push castVote on-chain (violet hexagon) */}
-      {relayLit >= 0 && travel(g.synth, g.burner, 'relay-coin gold', `bundle-${epoch}`)}
-      {relayLit >= 1 && travel(g.burner, g.oneShot, 'relay-coin cyan', `fee-${epoch}`)}
-      {relayLit >= 2 && travel(g.oneShot, g.board, 'relay-fuel', `eth-${epoch}`)}
+      {paced && relayLit >= 0 && travel(g.synth, g.burner, 'relay-coin gold', `bundle-${epoch}`)}
+      {paced && relayLit >= 1 && travel(g.burner, g.oneShot, 'relay-coin cyan', `fee-${epoch}`)}
+      {paced && relayLit >= 2 && travel(g.oneShot, g.board, 'relay-fuel', `eth-${epoch}`)}
       {/* the gas-abstraction label, tucked UNDER the 1Shot→VoteBoard beam; glows as the ETH pulse fires */}
       <div className={`relay-gas-label${relayLit >= 2 ? ' firing' : ''}`} style={{ left: g.gasMid.x, top: g.gasMid.y + 24 }}>
         <Fuel size={9} /> {t.relayGasLabel}
@@ -1067,9 +1076,11 @@ export function AuthorityChain({
       {/* the cast leg: Arbiter → VoteBoard, routed through the Burner + 1Shot relay on the mainnet path */}
       {oneShot ? (
         <>
-          <Beam container={containerRef} from={synthRef} to={burnerRef} live={castBeamLive(0)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
-          <Beam container={containerRef} from={burnerRef} to={oneShotRef} live={castBeamLive(1)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
-          <Beam container={containerRef} from={oneShotRef} to={boardRef} live={castBeamLive(2)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
+          {/* packet OFF: the MainnetRelayFlow coins (bundle/fee/gas) are the cast leg's travelling
+              lights — one per segment, launching only when ITS hop lights, landing before the next. */}
+          <Beam container={containerRef} from={synthRef} to={burnerRef} live={castBeamLive(0)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false} />
+          <Beam container={containerRef} from={burnerRef} to={oneShotRef} live={castBeamLive(1)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false} />
+          <Beam container={containerRef} from={oneShotRef} to={boardRef} live={castBeamLive(2)} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} packet={false} />
         </>
       ) : (
         <Beam container={containerRef} from={synthRef} to={boardRef} live={beamLive('voted')} killed={killed} cutting={cutting} tone={decisionToneKey(synthDecision)} />
@@ -1113,7 +1124,7 @@ export function AuthorityChain({
         <>
           {/* the Venice TEE enclave + Venice AI node (the AI's decision platform) — same as testnet */}
           <VeniceEnclave container={containerRef} synthRef={synthRef} lensRefs={lensRefs} active={lensLit >= 0} flowing={lensLit >= 0 && !beamLive('voted')} killed={killed} />
-          <MainnetRelayFlow container={containerRef} burnerRef={burnerRef} synthRef={synthRef} oneShotRef={oneShotRef} boardRef={boardRef} relayLit={relayLit} relay={relay} t={t} />
+          <MainnetRelayFlow container={containerRef} burnerRef={burnerRef} synthRef={synthRef} oneShotRef={oneShotRef} boardRef={boardRef} relayLit={relayLit} paced={!instant && !killed} relay={relay} t={t} />
           {relay.tollTx && <ReceiptTick container={containerRef} nodeRef={synthRef} txHash={relay.tollTx} basescan={relay.basescan} title="x402 toll ↗" />}
           {relay.castTx && <ReceiptTick container={containerRef} nodeRef={oneShotRef} txHash={relay.castTx} basescan={relay.basescan} title="1Shot castVote ↗" />}
         </>

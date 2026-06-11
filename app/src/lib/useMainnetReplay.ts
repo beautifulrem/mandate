@@ -13,6 +13,11 @@ import type { MissionVM } from '../components/MissionControl';
 
 const STAGE_MS = 1500; // mirrors MissionControl's STAGE_MS so the replay paces identically
 const RESET_MS = 120;
+// The mainnet cast leg keeps animating AFTER 'voted' reveals: the relay ratchet climbs 终裁→Burner→
+// 1Shot→VoteBoard at 1150ms per hop, then the last particle flies ~1.1s. `running` must outlive that
+// tail — the moment it flips false the cockpit snaps the ratchet to its target, and any hops still
+// pending would fire their particles ALL AT ONCE instead of left→right. (3 hops + flight + margin.)
+const RELAY_TAIL_MS = 3 * 1150 + 1100 + 650;
 
 /**
  * Drives a fake run status that, on replay(), dips to 'granted' then jumps to 'voted' with running=true
@@ -34,7 +39,7 @@ function useReplayClock(active: boolean): { status: string; running: boolean; re
     setStatus('granted'); // drop the target low so the cockpit ratchet snaps back, then re-climbs
     setRunning(true);
     timers.current.push(setTimeout(() => setStatus('voted'), RESET_MS));
-    timers.current.push(setTimeout(() => setRunning(false), RESET_MS + ORDER.length * STAGE_MS + 700));
+    timers.current.push(setTimeout(() => setRunning(false), RESET_MS + ORDER.length * STAGE_MS + RELAY_TAIL_MS));
   }, []);
   // Auto-play the full run every time we ENTER the mainnet view (active false → true).
   const prevActive = useRef(active);
