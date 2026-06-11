@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useReducedMotion } from 'motion/react';
-import { Bot, Coins, Lock, Receipt, Scale, ShieldCheck, Sparkles, User, Wallet } from 'lucide-react';
+import { Coins, Lock, Receipt, Scale, ShieldCheck, Sparkles, User, Wallet } from 'lucide-react';
 import { BASESCAN, shortHex } from '../lib/config';
 import { cn } from '../lib/cn';
 import type { RunStatus } from '@mandate/shared';
@@ -24,25 +24,24 @@ function Row({ k, v }: { k: string; v: ReactNode }) {
 type Pt = { x: number; y: number };
 
 /**
- * A mini replica of the cockpit's authority graph for the popover: circular 你→编排器→终裁→Venice nodes.
- * The PAYMENT leg (你→编排器→终裁) is a flowing gold DASH — same vocabulary as the main graph beams (no
- * coin; the coin lives only in the main graph). The DATA leg (终裁↔Venice) is a clearly distinct cyan
- * particle stream: the funded seller's request to Venice then Venice's response, edge-trimmed, played
- * once (request → response → gone) — not an infinite loop.
+ * The x402 PAYMENT flow, drawn as it actually settles on-chain: buyer budget → 终裁 (the seller,
+ * payTo is the Arbiter's address) → Venice. The Erc20TransferAmount delegation runs buyer→seller
+ * DIRECT — the orchestrator never touches the money, so it deliberately does not appear here (in
+ * the main graph it sits on the AUTHORITY chain, a different flow). The payment leg is a flowing
+ * gold dash; the data leg (终裁↔Venice) is a distinct cyan particle exchange played once.
  */
 function MiniPaymentDiagram({ cap, spent, t, symbol, buyerLabel, budgetStr }: { cap?: number; spent: number; t: Dict; symbol: string; buyerLabel: string; budgetStr: string }) {
   const reduce = useReducedMotion();
   const wrap = useRef<HTMLDivElement>(null);
-  const n0 = useRef<HTMLDivElement>(null); // 你
-  const n1 = useRef<HTMLDivElement>(null); // 编排器
-  const n2 = useRef<HTMLDivElement>(null); // 终裁 (seller)
+  const n0 = useRef<HTMLDivElement>(null); // buyer budget (你 / the burner)
+  const n2 = useRef<HTMLDivElement>(null); // 终裁 (the seller — payTo is its address)
   const n3 = useRef<HTMLDivElement>(null); // Venice
-  const [g, setG] = useState<{ payA: string; payB: string; dataFrom: Pt; dataTo: Pt; w: number; h: number } | null>(null);
+  const [g, setG] = useState<{ pay: string; dataFrom: Pt; dataTo: Pt; w: number; h: number } | null>(null);
   const [data, setData] = useState<'req' | 'resp' | 'done'>('req');
 
   useEffect(() => {
     const compute = () => {
-      if (!wrap.current || !n0.current || !n1.current || !n2.current || !n3.current) return;
+      if (!wrap.current || !n0.current || !n2.current || !n3.current) return;
       const cr = wrap.current.getBoundingClientRect();
       const c = (n: HTMLDivElement): Pt => {
         const r = n.getBoundingClientRect();
@@ -56,19 +55,16 @@ function MiniPaymentDiagram({ cap, spent, t, symbol, buyerLabel, budgetStr }: { 
       };
       const R = 17; // circle radius 16 + a hair: dashes reach the visible rim (the 4px halo is translucent)
       const p0 = c(n0.current);
-      const p1 = c(n1.current);
       const p2 = c(n2.current);
       const p3 = c(n3.current);
-      // two independent segments, each trimmed at BOTH rims. The old single polyline ran straight
-      // through the middle node's centre, dragging the flowing light across the circle.
+      // each leg trimmed at BOTH rims so nothing crosses or detaches from a circle
       const seg = (a: Pt, b: Pt) => {
         const s0 = along(a, b, R);
         const s1 = along(b, a, R);
         return `M ${s0.x} ${s0.y} L ${s1.x} ${s1.y}`;
       };
       setG({
-        payA: seg(p0, p1),
-        payB: seg(p1, p2),
+        pay: seg(p0, p2),
         dataFrom: along(p2, p3, R),
         dataTo: along(p3, p2, R),
         w: cr.width,
@@ -110,7 +106,6 @@ function MiniPaymentDiagram({ cap, spent, t, symbol, buyerLabel, budgetStr }: { 
 
   const nodes = [
     { ref: n0, icon: User, label: buyerLabel, tone: '#ffd470' },
-    { ref: n1, icon: Bot, label: t.nodes.orch.who, tone: 'var(--color-brand)' },
     { ref: n2, icon: Scale, label: t.nodes.synthesis.who, tone: '#ffd470' },
     { ref: n3, icon: Sparkles, label: t.nodes.venice.who, tone: 'var(--color-info)' },
   ];
@@ -129,12 +124,10 @@ function MiniPaymentDiagram({ cap, spent, t, symbol, buyerLabel, budgetStr }: { 
           {/* Every leg gets a SOLID faint base line first: an animated (or phase-shifted) dash can
               never touch both rims at every instant — its dashes emerge from one end and vanish into
               the other — so the base line is what makes the connector read as attached to the nodes. */}
-          <path d={g.payA} stroke="rgba(255,212,112,0.32)" strokeWidth={1.5} fill="none" strokeLinecap="round" />
-          <path d={g.payB} stroke="rgba(255,212,112,0.32)" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+          <path d={g.pay} stroke="rgba(255,212,112,0.32)" strokeWidth={1.5} fill="none" strokeLinecap="round" />
           <line x1={g.dataFrom.x} y1={g.dataFrom.y} x2={g.dataTo.x} y2={g.dataTo.y} stroke="rgba(110,168,254,0.3)" strokeWidth={1.5} strokeLinecap="round" />
           {/* payment motion — a fine gold dash crawling toward the seller, layered over the base */}
-          <path className="mini-pay-dash" d={g.payA} />
-          <path className="mini-pay-dash" d={g.payB} />
+          <path className="mini-pay-dash" d={g.pay} />
           {/* data channel texture — static dashes over the base; cyan particles animate above */}
           <line x1={g.dataFrom.x} y1={g.dataFrom.y} x2={g.dataTo.x} y2={g.dataTo.y} stroke="var(--color-info)" strokeWidth={1.5} strokeDasharray="3 5" opacity={0.45} />
         </svg>
