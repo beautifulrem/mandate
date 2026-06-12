@@ -133,6 +133,29 @@ export default function Home() {
     setRecalling(false);
   }, [address]);
 
+  // Viewer affordance: adopt an existing orchestrator run by id (?run=<id>) so the cockpit can
+  // display a run created OUTSIDE this browser — e.g. the CLI verify scripts or a shared link.
+  // Display-plus-vote-again adoption: grantRunId is set (the x402 flow renders, "let the agent
+  // vote" works — no signature needed under the standing mandate), but rootDel stays null, so
+  // Recall is correctly unavailable (this browser never held the grant signature).
+  const adoptedRun = useRef(false);
+  useEffect(() => {
+    if (adoptedRun.current) return;
+    const id = new URLSearchParams(window.location.search).get('run');
+    if (!id) return;
+    adoptedRun.current = true;
+    getRun(id)
+      .then((r) => {
+        setGrantedProposalId(BigInt(r.proposalId));
+        setGrantRunId(id);
+        setRunId(id);
+      })
+      .catch(() => {
+        /* unknown run id — stay pristine */
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Live run feed: SSE push from the orchestrator (sub-second state changes), falling back to 2s
   // REST polling if the stream can't open or drops (proxy, old orchestrator). A fresh runId /
   // disconnect must drop a late event, not re-light the cockpit.
