@@ -1,11 +1,44 @@
-# Mandate — revocable AI governance delegation
+<div align="center">
 
-> Grant an AI agent a **scoped, revocable** right to vote your DAO governance on your behalf —
-> then kill the entire delegation chain on-chain in one click.
->
-> Hackathon entry: **MetaMask Smart Accounts Kit × 1Shot API × Venice AI "Dev Cook-Off"** (submit by 2026-06-15).
+<img src="docs/assets/logo.svg" width="96" alt="Mandate — a faceted shield carrying a check, its tip severed (the on-chain kill switch)">
 
-## The flow
+# Mandate
+
+**Grant an AI a scoped, revocable right to vote your DAO governance — then kill the entire delegation chain on-chain in one click.**
+
+[**English**](./README.md) · [简体中文](./README.zh-CN.md)
+
+[![Live demo](https://img.shields.io/badge/live_demo-vercel-f6851b?logo=vercel&logoColor=white)](https://mandate-app-murex.vercel.app)
+[![Base mainnet](https://img.shields.io/badge/Base-mainnet_8453-0052ff?logo=coinbase&logoColor=white)](https://basescan.org/tx/0xc48632ca8bc72db8c68eabd3e7dde90c5eae37b6afef60e70b1e686a8f8b5092)
+[![ERC-7710](https://img.shields.io/badge/ERC--7710-delegation-e2761b)](https://eips.ethereum.org/EIPS/eip-7710)
+[![EIP-7702](https://img.shields.io/badge/EIP--7702-in--place_upgrade-e2761b)](https://eips.ethereum.org/EIPS/eip-7702)
+[![Tests](https://img.shields.io/badge/tests-201_passing-2ea043)](#-quick-start)
+[![License](https://img.shields.io/badge/license-MIT-8b95a7)](./LICENSE)
+
+[Live Demo](https://mandate-app-murex.vercel.app) · [On-chain Evidence](./EVIDENCE.md) · [Architecture](./ARCHITECTURE.md) · [Submission](./SUBMISSION.md)
+
+<img src="docs/assets/hero.gif" width="880" alt="The recorded Base-mainnet run replaying in the app: grant → A2A re-delegation → Venice TEE committee → x402 toll → 1Shot relay → vote lands on-chain">
+
+<sub>The recorded <b>Base-mainnet</b> run replaying in the app — 3-hop A2A delegation, Venice-TEE committee, x402 toll,
+1Shot relay; the vote lands as the user's own smart account, every artifact linked to Basescan.</sub>
+
+</div>
+
+---
+
+Hackathon entry: **MetaMask Smart Accounts Kit × 1Shot API × Venice AI "Dev Cook-Off"** (submit by 2026-06-15).
+
+## ✨ Highlights
+
+- 🛡️ **A standing, vote-only, revocable AI mandate** — one ERC-7710 delegation lets an agent vote *any* proposal on the DAO board, **provably cannot touch your funds** (the in-app Tamper Probe shows the forbidden call reverting at the enforcer).
+- ✂️ **A one-click kill switch** — `disableDelegation(root)` cascade-revokes the *whole* agent chain; the next redemption reverts on-chain. Self-custody you can watch.
+- 🤝 **Real A2A attenuation** — user → orchestrator → analyst, each hop provably *narrower* (vote cap, expiry, `limitedCalls`), enforced at redemption.
+- 🔒 **Venice TEE committee** — four lenses + an arbiter decide every vote inside a sealed Intel TDX enclave: attested, signed, and even **spoken aloud** (`/audio/speech`).
+- 💸 **x402 pay-per-query** — the agent pays the data source a 0.001 USDC toll from a scoped `Erc20TransferAmount` budget, settled on-chain.
+- 🚀 **Zero-ETH mainnet voting via 1Shot** — the 3-hop chain is redeemed in ONE relay call: `castVote` executes **as the user's smart account**, the user's **EIP-7702 upgrade rides the same call**, a sponsor pays the USDC fee, the relayer fronts the ETH gas.
+- 🧾 **Everything receipted** — every claim above links to a real transaction in [`EVIDENCE.md`](./EVIDENCE.md).
+
+## 🧭 How it works
 
 1. **Grant a standing mandate** — your MetaMask smart account signs **one** ERC-7710 delegation: an
    AI may `castVote` on **any** proposal on this DAO board, **vote-only** (never your funds), bounded
@@ -25,7 +58,7 @@
 > OpenZeppelin `Governor`, with the scope tightened further to a single **locked `proposalId`** — an
 > even narrower variant of the same delegation, kept for the on-chain Governor receipts in `EVIDENCE.md`.
 
-### Zero-gas membership — what the mainnet run proves for a real DAO
+### 🪙 Zero-gas membership — what the mainnet run proves for a real DAO
 
 The recorded Base-mainnet cast ([`0xc486…5092`](https://basescan.org/tx/0xc48632ca8bc72db8c68eabd3e7dde90c5eae37b6afef60e70b1e686a8f8b5092))
 splits the vote into **two delegations inside one atomic relay transaction** — and that split is a
@@ -45,7 +78,7 @@ sponsor subsidises *participation*, not *direction* — it signs before any deci
 cannot condition payment on how the vote goes. (In this repo the sponsor role is played by the
 disposable burner; in production it would be the DAO's ops treasury.)
 
-## Why ERC-7710 — nothing weaker gives all four at once
+## 🧱 Why ERC-7710 — nothing weaker gives all four at once
 
 Letting an AI vote *your* governance demands **four properties at the same time**, and only a
 scoped, revocable ERC-7710 delegation delivers all four. Every weaker option fails at least one:
@@ -83,7 +116,9 @@ The orchestrator→analyst hop is not decoration — remove `parentDelegation` a
   so one `disableDelegation(root)` revokes every downstream agent at once — that's Recall. With N
   flat grants you'd be hunting down N separate revocations while a rogue agent keeps voting.
 
-## Live on Base Sepolia (84532)
+## 🌐 Deployed contracts
+
+**Base Sepolia (84532)** — the live demo:
 
 | | address | used by |
 |---|---|---|
@@ -91,9 +126,15 @@ The orchestrator→analyst hop is not decoration — remove `parentDelegation` a
 | VotesToken (ERC20Votes) | [`0x56FC5fA996f9D0e15e40fE7D738C6cA055d1Ad55`](https://sepolia.basescan.org/address/0x56FC5fA996f9D0e15e40fE7D738C6cA055d1Ad55) | the CLI / Governor path |
 | MandateGovernor (OZ) | [`0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5`](https://sepolia.basescan.org/address/0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5) | the CLI `vote:2hop` (locked-`proposalId`) path |
 
+**Base mainnet (8453)** — the recorded full-chain run:
+
+| | address | used by |
+|---|---|---|
+| **VoteBoard** (mainnet) | [`0x0B878c4A25002c14602ea8b25fD0099Ad6CEebeF`](https://basescan.org/address/0x0B878c4A25002c14602ea8b25fD0099Ad6CEebeF) | the 1Shot-relayed mainnet cast the app replays |
+
 Per-track on-chain receipts are in **[`EVIDENCE.md`](./EVIDENCE.md)**.
 
-## Tracks
+## 🏆 Hackathon tracks
 
 **The pitch in one line:** a *standing, vote-only, revocable* AI governance mandate — an agent votes
 any proposal on the DAO for you, **provably cannot touch your funds**, and you can **kill the whole
@@ -113,11 +154,11 @@ hop-count).
 
 Full receipts per track: [`EVIDENCE.md`](./EVIDENCE.md).
 
-## Run it
+## 🚀 Quick start
 
 ```bash
 pnpm install
-pnpm -r build && pnpm -r test          # 198 tests, all green: 108 shared · 55 app · 20 Foundry · 15 agents
+pnpm -r build && pnpm -r test          # 201 tests, all green: 108 shared · 58 app · 20 Foundry · 15 agents
 
 # one-time: generate throwaway demo keys into .env + print a funding checklist
 pnpm bootstrap:accounts                 # then fund the printed addresses from a Base Sepolia faucet
@@ -136,7 +177,7 @@ pnpm --filter @mandate/app dev                # Next.js app on :3000 (connect Me
 > The demo wallet must be the seeded voter: import the `.env` `USER_DEMO_PK` into MetaMask so the
 > connected smart account is the one seeded with voting power.
 
-## Architecture
+## 🗺️ Architecture
 
 See **[`ARCHITECTURE.md`](./ARCHITECTURE.md)**. In short — a pnpm monorepo:
 
@@ -151,7 +192,7 @@ agent/mandate-mcp/    MCP server: any agent can DESCRIBE/REQUEST a mandate — b
 app/                  Next.js 15 — connect, grant (browser signing), live authority graph, Recall
 ```
 
-## Stack
+## 🛠️ Stack
 
 `@metamask/smart-accounts-kit@1.6.0` (ERC-7710 delegation/redelegation, EIP-7702, Hybrid smart accounts) ·
 `viem` · OpenZeppelin Contracts `5.6.1` + Foundry · Venice AI (TEE `e2ee-*` models, `/tee/attestation`) ·
@@ -159,7 +200,7 @@ app/                  Next.js 15 — connect, grant (browser signing), live auth
 (UserOps) · Next.js 15 / React 19 · SSE run streaming (EventSource, polling fallback) · MCP server ·
 Base (Sepolia 84532 · mainnet 8453).
 
-## Smart Accounts Kit surface — what Mandate actually calls
+## 🔌 Smart Accounts Kit surface — what Mandate actually calls
 
 Every delegation primitive is the real SDK, verified against `@metamask/smart-accounts-kit@1.6.0`
 (see [`packages/shared/src/delegation.ts`](./packages/shared/src/delegation.ts),
@@ -183,14 +224,14 @@ Enforcers exercised: `AllowedTargetsEnforcer` · `AllowedMethodsEnforcer` · `Ti
 `LimitedCallsEnforcer` (plus `AllowedCalldataEnforcer` in the single-proposal CLI path, which locks
 `proposalId`). The decoded scope is rendered live in the app's **Permission X-Ray**.
 
-## Honest limitations
+## ⚖️ Honest limitations
 
 Documented choices, not hidden stubs:
 
 - **Demo-scoped governance.** The app's standing mandate runs on our self-built `VoteBoard`; the
-  OpenZeppelin `Governor` path is the CLI reproduction (`pnpm vote:2hop`) — same SAK primitives,
-  scope tightened to one locked `proposalId`. `votingPeriod` is **300 s** so a judge can reproduce a
-  full grant → vote → recall cycle in minutes, not days.
+  OpenZeppelin `Governor` path is the CLI reproduction (`pnpm vote:2hop`) — same SAK primitives, scope
+  tightened to one locked `proposalId`. `votingPeriod` is **300 s** so a judge can reproduce a full
+  grant → vote → recall cycle in minutes, not days.
 - **mUSDC is a mock.** The x402 toll settles in our 6-decimal `MockUSDC` on Base Sepolia. The only
   real-USDC money leg is the 1Shot mainnet relay fee (0.01 USDC).
 - **Self-built x402 seller.** The seller verifies and redeems the scoped ERC-7710 delegation itself;
@@ -203,12 +244,12 @@ Documented choices, not hidden stubs:
   (`pnpm 1shot:full --mainnet`, free dry-quote via `--estimate`).
 - The mainnet Governor and every proposal carry `HACKATHON DEMO — NO REAL VALUE` and a 0 treasury.
 
-## Safety / boundaries
+## 🔐 Safety / boundaries
 
 Throwaway keys only; secrets stay in `.env` (gitignored). Testnet first. Any mainnet action (the
 1Shot leg, ~$5 USDC) is opt-in and quoted live before signing. The mainnet Governor + every proposal
 carry a `HACKATHON DEMO — NO REAL VALUE` disclaimer.
 
-## License
+## 📄 License
 
-MIT.
+[MIT](./LICENSE)
