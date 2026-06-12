@@ -941,6 +941,7 @@ function MainnetRelayFlow({
         </span>
         <span className="burner-wallet-meta">
           <span className="burner-wallet-name">{t.burnerNode.who}</span>
+          <span className="burner-wallet-role">{t.burnerNode.role}</span>
           {burnerAddr ? (
             <a className="burner-wallet-addr" href={`${basescan}/address/${burnerAddr}`} target="_blank" rel="noreferrer">
               {shortHex(burnerAddr, 4)} ↗
