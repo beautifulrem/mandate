@@ -753,15 +753,29 @@ function MainnetRelayFlow({
 }) {
   const reduce = useReducedMotion();
   const [g, setG] = useState<{
+    w: number;
+    h: number;
     synth: { x: number; y: number };
     oneShot: { x: number; y: number };
     board: { x: number; y: number };
     burner: { x: number; y: number };
+    synthWallet: { x: number; y: number };
+    oneShotWallet: { x: number; y: number };
+    burnerBadge: { x: number; y: number };
     gasMid: { x: number; y: number };
   } | null>(null);
   const coinRef = useRef<HTMLDivElement>(null);
+  const synthWalletRef = useRef<HTMLSpanElement>(null);
+  const oneShotWalletRef = useRef<HTMLSpanElement>(null);
+  const burnerBadgeRef = useRef<HTMLSpanElement>(null);
   const tollFired = useRef(false);
   const [ring, setRing] = useState(false);
+  // one-shot wallet "clink" pulse (same vocabulary as the testnet PaymentFlow wallets)
+  const repulse = (ref: RefObject<HTMLSpanElement | null>) => {
+    ref.current?.classList.remove('pulse');
+    void ref.current?.offsetWidth;
+    ref.current?.classList.add('pulse');
+  };
 
   useEffect(() => {
     const compute = () => {
@@ -774,10 +788,24 @@ function MainnetRelayFlow({
       const synth = c(synthRef.current);
       const oneShot = c(oneShotRef.current);
       const board = c(boardRef.current);
-      // wallet BELOW the axis, between 终裁 and 1Shot — both fees rise to their payee (x402 up-left to
-      // 终裁, relay fee up-right to 1Shot): supply, never an axis backflow.
-      const burner = { x: (synth.x + oneShot.x) / 2, y: synth.y + 86 };
-      setG({ synth, oneShot, board, burner, gasMid: { x: (oneShot.x + board.x) / 2, y: (oneShot.y + board.y) / 2 } });
+      // wallet BELOW the axis, between 终裁 and 1Shot, mirroring the Venice satellite above (−72) —
+      // both fees rise to their payee (x402 up-left to 终裁, relay fee up-right to 1Shot): supply,
+      // never an axis backflow.
+      const burner = { x: (synth.x + oneShot.x) / 2, y: synth.y + 78 };
+      setG({
+        w: cr.width,
+        h: cr.height,
+        synth,
+        oneShot,
+        board,
+        burner,
+        // payee wallets sit on the corner FACING the payer (testnet vocabulary: the wallet is where
+        // the coin lands) — 终裁's bottom-right and 1Shot's bottom-left both face the burner below.
+        synthWallet: { x: synth.x + 21, y: synth.y + 21 },
+        oneShotWallet: { x: oneShot.x - 21, y: oneShot.y + 21 },
+        burnerBadge: { x: (synth.x + oneShot.x) / 2 + 12, y: synth.y + 78 + 12 },
+        gasMid: { x: (oneShot.x + board.x) / 2, y: (oneShot.y + board.y) / 2 },
+      });
     };
     compute();
     const ro = new ResizeObserver(compute);
@@ -803,19 +831,21 @@ function MainnetRelayFlow({
     if (!g || !decidedLit || killed || tollFired.current || !paced) return;
     tollFired.current = true;
     let ringTimer: ReturnType<typeof setTimeout> | undefined;
-    const payY = g.synth.y + 20; // land just below the 终裁 circle, not on its centre
+    const pay = g.synthWallet; // land at the seller's wallet badge (终裁 bottom-right, facing the payer)
     if (reduce || !coin) {
       setRing(true);
+      repulse(synthWalletRef);
       ringTimer = setTimeout(() => setRing(false), 700);
       return () => clearTimeout(ringTimer);
     }
-    const arcH = 44;
+    repulse(burnerBadgeRef); // withdraw from the agent wallet
+    const arcH = 40;
     const fly = animate(0, 1, {
       duration: 0.95,
       ease: [0.4, 0, 0.2, 1],
       onUpdate: (pr) => {
-        const x = g.burner.x + (g.synth.x - g.burner.x) * pr;
-        const y = g.burner.y + (payY - g.burner.y) * pr - arcH * Math.sin(Math.PI * pr);
+        const x = g.burner.x + (pay.x - g.burner.x) * pr;
+        const y = g.burner.y + (pay.y - g.burner.y) * pr - arcH * Math.sin(Math.PI * pr);
         const pop = pr < 0.16 ? pr / 0.16 : pr > 0.84 ? (1 - pr) / 0.16 : 1;
         coin.style.transform = `translate3d(${x - 9}px, ${y - 9}px, 0) scale(${0.45 + 0.55 * pop})`;
         coin.style.opacity = `${pop}`;
@@ -823,6 +853,7 @@ function MainnetRelayFlow({
       onComplete: () => {
         coin.style.opacity = '0';
         setRing(true);
+        repulse(synthWalletRef); // deposit into the seller's wallet
         ringTimer = setTimeout(() => setRing(false), 700);
       },
     });
@@ -840,6 +871,14 @@ function MainnetRelayFlow({
     if (live && !prevLive.current) setEpoch((e) => e + 1);
     prevLive.current = live;
   }, [relayLit]);
+  // wallet clinks for the relay fee: withdraw at launch, deposit at 1Shot when the coin lands (1.1s)
+  useEffect(() => {
+    if (relayLit < 0 || !paced || killed) return;
+    repulse(burnerBadgeRef);
+    const id = setTimeout(() => repulse(oneShotWalletRef), 1100);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [epoch, paced, killed]);
   if (!g) return null;
 
   const R = 37;
@@ -856,13 +895,36 @@ function MainnetRelayFlow({
 
   const upgraded = relayLit >= 0; // 7702-upgraded by the time it sponsors the relay
   const retired = relayLit >= 1 && !killed; // vote landed → the one-shot key is retired (abandoned, not destroyed)
+  // trim the pay-channel lines to the node rims (burner disc r≈16+4, main circles r=30+6)
+  const seg = (from: { x: number; y: number }, to: { x: number; y: number }, r1: number, r2: number) => {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x1: from.x + (dx / len) * r1, y1: from.y + (dy / len) * r1, x2: to.x - (dx / len) * r2, y2: to.y - (dy / len) * r2 };
+  };
+  const tollSeg = seg(g.burner, g.synth, 20, 36);
+  const feeSeg = seg(g.burner, g.oneShot, 20, 36);
+  const lineOpacity = killed ? 0.12 : 0.32;
   return (
     <>
-      {/* x402 toll: Burner → 终裁 (3D gold coin, rising), deposit ring at the seller */}
+      {/* faint persistent pay channels (gold dashes), the Venice-link vocabulary mirrored below the
+          axis: Burner → 终裁 (x402 toll) and Burner → 1Shot (relay fee) — the coins ride these. */}
+      <svg className="beam-svg" width={g.w} height={g.h} viewBox={`0 0 ${g.w} ${g.h}`} fill="none" aria-hidden="true">
+        <line x1={tollSeg.x1} y1={tollSeg.y1} x2={tollSeg.x2} y2={tollSeg.y2} stroke="#f5b942" strokeWidth={1.5} strokeDasharray="3 5" style={{ opacity: lineOpacity, transition: 'opacity 0.5s var(--ease-fluid)' }} />
+        <line x1={feeSeg.x1} y1={feeSeg.y1} x2={feeSeg.x2} y2={feeSeg.y2} stroke="#f5b942" strokeWidth={1.5} strokeDasharray="3 5" style={{ opacity: lineOpacity, transition: 'opacity 0.5s var(--ease-fluid)' }} />
+      </svg>
+      {/* payee wallets at the corner facing the payer (testnet vocabulary: the coin lands ON a wallet) */}
+      <span ref={synthWalletRef} className="pay-wallet" style={{ left: g.synthWallet.x, top: g.synthWallet.y, opacity: killed ? 0.35 : 1, filter: killed ? 'grayscale(1)' : undefined }}>
+        <Wallet size={12} />
+      </span>
+      <span ref={oneShotWalletRef} className="pay-wallet" style={{ left: g.oneShotWallet.x, top: g.oneShotWallet.y, opacity: killed ? 0.35 : 1, filter: killed ? 'grayscale(1)' : undefined }}>
+        <Wallet size={12} />
+      </span>
+      {/* x402 toll: Burner → 终裁's wallet (3D gold coin, rising), deposit ring at the wallet */}
       <div ref={coinRef} className="pay-coin" style={{ opacity: 0 }}>
         <div className="pay-coin-face" />
       </div>
-      {ring && !killed && <span key="mn-x402-ring" className="pay-ring" style={{ left: g.synth.x, top: g.synth.y + 20 }} />}
+      {ring && !killed && <span key="mn-x402-ring" className="pay-ring" style={{ left: g.synthWallet.x, top: g.synthWallet.y }} />}
       {/* 1Shot relay fee: Burner → 1Shot (cyan, rising right); ETH gas: 1Shot → VoteBoard (violet) */}
       {paced && relayLit >= 0 && travel(g.burner, g.oneShot, 'relay-coin cyan', `fee-${epoch}`)}
       {paced && relayLit >= 1 && travel(g.oneShot, g.board, 'relay-fuel', `eth-${epoch}`)}
@@ -870,7 +932,8 @@ function MainnetRelayFlow({
         <Fuel size={9} /> {t.relayGasLabel}
       </div>
 
-      {/* the agent wallet — a floating Burner node below the axis, the source of both fees */}
+      {/* the agent wallet — a floating Burner satellite below the axis (mirrors the Venice AI node
+          above), the source of both fees; its own wallet badge sits bottom-right, like every payer */}
       <div className={`burner-wallet${killed ? ' killed' : ''}${retired ? ' retired' : ''}`} style={{ left: g.burner.x, top: g.burner.y }}>
         {upgraded && !retired && !killed && <span aria-hidden className="burner-wallet-ring" />}
         <span className={`burner-wallet-disc${upgraded && !killed ? ' on' : ''}${retired ? ' retired' : ''}`}>
@@ -883,13 +946,19 @@ function MainnetRelayFlow({
               {shortHex(burnerAddr, 4)} ↗
             </a>
           ) : null}
-          {retired ? <span className="burner-wallet-retired">{t.burnerRetired}</span> : <span className="burner-wallet-chip">0 ETH</span>}
+          <span className="burner-wallet-chips">
+            <span className="burner-wallet-7702">7702</span>
+            {retired ? <span className="burner-wallet-retired">{t.burnerRetired}</span> : <span className="burner-wallet-chip">0 ETH</span>}
+          </span>
         </span>
         <span className="mc-node-tip" role="tooltip">
           <span className="mc-node-tip-k">{t.burnerNode.who}</span>
           {t.nodeTips.burner}
         </span>
       </div>
+      <span ref={burnerBadgeRef} className="pay-wallet" style={{ left: g.burnerBadge.x, top: g.burnerBadge.y, opacity: killed ? 0.35 : 1, filter: killed ? 'grayscale(1)' : undefined }}>
+        <Wallet size={12} />
+      </span>
     </>
   );
 }
