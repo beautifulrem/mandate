@@ -72,6 +72,11 @@ export function useMainnetReplay(statics: {
   const burner = snap.oneshot.burner;
   const proposal = PROPOSALS[0];
   const board = (snap.voteBoard ?? '0x0000000000000000000000000000000000000000') as Address;
+  // the recorded run is a REAL 3-hop A2A chain — distinct user / orchestrator / analyst addresses
+  const flow = snap.chainFlow?.participants;
+  const userAddr = (flow?.user ?? burner) as Address;
+  const orchAddr = (flow?.orchestrator ?? burner) as Address;
+  const analystAddr = (flow?.analyst ?? snap.toll?.seller ?? burner) as Address;
 
   const run = {
     runId: 'mainnet-replay',
@@ -80,8 +85,9 @@ export function useMainnetReplay(statics: {
     proposalId: snap.proposal.id,
     status: 'voted',
     delegations: {
-      rootHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      participants: { user: burner, orchestrator: burner, analyst: burner },
+      rootHash: (snap.chainFlow?.hashes.root ?? '0x0000000000000000000000000000000000000000000000000000000000000000') as `0x${string}`,
+      redelegationHash: snap.chainFlow?.hashes.mid as `0x${string}` | undefined,
+      participants: { user: userAddr, orchestrator: orchAddr, analyst: analystAddr },
     },
     lenses: snap.lenses,
     venice: snap.venice,
@@ -113,9 +119,9 @@ export function useMainnetReplay(statics: {
     setActiveIdx: noop,
     activeProposal: proposal,
     proposalCount: 1,
-    address: burner,
+    address: userAddr,
     isConnected: true,
-    userSA: { address: burner } as unknown as SmartAccount,
+    userSA: { address: userAddr } as unknown as SmartAccount,
     run,
     s: clock.status,
     venice: snap.venice as RunStatus['venice'],
@@ -126,10 +132,9 @@ export function useMainnetReplay(statics: {
     votesUsed: 1,
     grantedAt: Date.parse(snap.recordedAt) || null,
     voteLog: [],
-    youAddr: burner,
-    // the recorded mainnet run has NO orchestrator hop — never surface a borrowed address for it
-    orchAddr: undefined,
-    analystAddr: snap.toll?.seller ?? burner,
+    youAddr: userAddr,
+    orchAddr,
+    analystAddr,
     burnerAddr: burner,
     boardAddr: snap.voteBoard ?? board,
     killed: false,

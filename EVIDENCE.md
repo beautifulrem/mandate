@@ -63,16 +63,28 @@ VALUE / 0 TREASURY`); basescan: `https://basescan.org`.
 | What | value |
 |---|---|
 | MandateGovernor (mainnet) | [`0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5`](https://basescan.org/address/0x1BC00C1c14bE7eaC46237C4bcBD0530bb9655FD5) |
-| Burner (7702-upgraded) | [`0x83cA7AF35e85Db90938391290Cdb6A3e6FfaA991`](https://basescan.org/address/0x83cA7AF35e85Db90938391290Cdb6A3e6FfaA991) — code `0xef010063c0c19a…dae32b` |
+| User smart account (root delegator, 7702-upgraded THIS run) | [`0x578215EB18099f48978dFF14a5d03a74242a0dA3`](https://basescan.org/address/0x578215EB18099f48978dFF14a5d03a74242a0dA3) |
+| Orchestrator (attenuated re-delegator) | [`0x82FBd69A5b1643196374F13Fc015935B9e3F9B0B`](https://basescan.org/address/0x82FBd69A5b1643196374F13Fc015935B9e3F9B0B) |
+| Analyst (leaf delegate · x402 seller) | [`0x31f898937F29c089b748750b00668Cf8ED5a5F28`](https://basescan.org/address/0x31f898937F29c089b748750b00668Cf8ED5a5F28) |
+| Burner (7702 relay sponsor) | [`0x83cA7AF35e85Db90938391290Cdb6A3e6FfaA991`](https://basescan.org/address/0x83cA7AF35e85Db90938391290Cdb6A3e6FfaA991) |
 
-- **Real mainnet `castVote` relayed via the 1Shot permissionless relayer**: the burner EOA is
-  upgraded to a 7702 stateless delegator **through 1Shot** (authorizationList first-use), signs one
-  ERC-7710 delegation to the relayer's `targetAddress`, and the relayer redeems a bundle
-  [USDC fee → feeCollector, `Governor.castVote`]. **Gas paid in USDC by the relayer** (burner holds
-  0 ETH); fee **0.01 USDC**. castVote tx
-  [`0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07`](https://basescan.org/tx/0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07).
-  On-chain: `hasVoted(burner)=true`, `proposalVotes.For = 1000e18`, burner code = `0xef0100‖impl`.
-  Reproduce: `pnpm 1shot:vote --estimate` (free quote) then `pnpm 1shot:vote`.
+- **FULL chain in ONE mainnet run (2026-06-12)** — every track end-to-end, reproduce with
+  `pnpm 1shot:full --mainnet --estimate` (free quote) then `pnpm 1shot:full --mainnet`:
+  - **A2A** a real 3-hop attenuated chain: user SA → orchestrator (root: this board · ≤3 votes ·
+    7-day expiry) → analyst (mid: +`limitedCalls 1`) → leaf locked to **exactly**
+    `castVote(proposalId, decidedSupport)`. root `0x206a9adc…` · mid `0x669df36a…` · leaf `0x42233d2f…`.
+  - **TEE** the Venice committee (4 lenses + arbiter) decided **For** BEFORE the leaf was signed
+    (attestation `verified:true`, enclave nonce `83fbc5a9…`).
+  - **x402** the agent's USDC budget paid the analyst's **0.001 USDC** data toll on-chain — toll tx
+    [`0xb244c3e4…6174`](https://basescan.org/tx/0xb244c3e4b9c701bea6eb8812caf0b71f6d23ab29c6c3084d69bc421deefd6174).
+  - **1Shot** the relayer redeemed the 3-hop chain — **`castVote` executed AS the user SA**, the
+    user's **EIP-7702 upgrade riding the SAME relay call**, the burner sponsoring the USDC fee.
+    castVote tx [`0xc48632ca…5092`](https://basescan.org/tx/0xc48632ca8bc72db8c68eabd3e7dde90c5eae37b6afef60e70b1e686a8f8b5092)
+    (block 47228284). On-chain: `getVote(proposalId, userSA) = 2` (voted · support 1=For), user code
+    = `0xef0100‖impl`, fee **0.01 USDC** paid by the sponsor. This is the recorded run the app replays.
+- **Earlier minimal 1Shot proof (2026-06-09)** — burner-only castVote
+  [`0x3b5448aa…6a07`](https://basescan.org/tx/0x3b5448aaac605e1416be48e238c12a755532b762d392dd70f4025e5a152a6a07);
+  superseded by the full-chain run above. Single-leg reproduce: `pnpm 1shot:vote`.
 
 ## x402 + ERC-7710 — pay-per-query (live, Base Sepolia)
 
