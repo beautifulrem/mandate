@@ -9,7 +9,7 @@ import { LangToggle } from '../LangToggle';
 import { StatusDot } from '../ui/Badge';
 
 /**
- * Persistent HUD chrome over the canvas: the Mandate logo lockup (left) and the language toggle +
+ * Persistent HUD chrome over the canvas: the Regent logo lockup (left) and the language toggle +
  * live-network pill + wallet identity pill (right). The wallet pill is driven by RainbowKit's custom
  * render-prop so real connect / account / chain modals stay wired — connecting itself lives in the
  * Smart-Account popover; here we only surface the connected identity.
@@ -46,7 +46,7 @@ export function TopBar({
         <span className="grid size-9 place-items-center rounded-[11px] border border-brand/30 bg-brand/10 text-brand shadow-[0_0_24px_-8px_var(--color-brand)]">
           <ShieldCheck className="size-5" strokeWidth={2} />
         </span>
-        <span className="font-display text-[19px] font-bold tracking-tight text-ink">Mandate</span>
+        <span className="font-display text-[19px] font-bold tracking-tight text-ink">Regent</span>
       </div>
 
       <div className="flex items-center gap-2.5">
